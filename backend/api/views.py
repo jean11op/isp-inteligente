@@ -4,6 +4,14 @@ from users.models import User
 from clients.models import Client
 from services.models import Service
 from tickets.models import Ticket
+from .permissions import (
+    IsAdmin,
+    IsAdminOrClientCreate,
+    IsAdminOrReadOnly,
+    IsAdminOrSelfClient,
+    IsAdminOrSelfProfile,
+    IsTicketRelatedOrAdmin,
+)
 
 from .serializers import (
     UserSerializer,
@@ -14,78 +22,106 @@ from .serializers import (
 
 
 class UserListCreateView(generics.ListCreateAPIView):
-    """
-    GET  → obtiene todos los usuarios.
-    POST → crea un nuevo usuario.
-    """
+    """Lista usuarios y crea nuevos usuarios solo para administradores."""
 
-    queryset = User.objects.all()
     serializer_class = UserSerializer
+    permission_classes = [IsAdmin]
+
+    def get_queryset(self):
+        if self.request.user.role == "ADMINISTRADOR":
+            return User.objects.all()
+        return User.objects.filter(pk=self.request.user.pk)
 
 
 class ClientListCreateView(generics.ListCreateAPIView):
-    """
-    GET  → obtiene todos los clientes.
-    POST → crea un nuevo cliente.
-    """
+    """Lista y crea clientes únicamente para administradores."""
 
     queryset = Client.objects.all()
     serializer_class = ClientSerializer
+    permission_classes = [IsAdmin]
 
 
 class ServiceListCreateView(generics.ListCreateAPIView):
-    """
-    GET  → obtiene todos los servicios.
-    POST → crea un nuevo servicio.
-    """
+    """Servicios: lectura autenticada y escritura solo para administradores."""
 
     queryset = Service.objects.all()
     serializer_class = ServiceSerializer
+    permission_classes = [IsAdminOrReadOnly]
 
 
 class TicketListCreateView(generics.ListCreateAPIView):
-    """
-    GET  → obtiene todos los tickets.
-    POST → crea un nuevo ticket.
-    """
+    """Tickets: clientes y administradores pueden crear; acceso filtrado por relación."""
 
-    queryset = Ticket.objects.all()
     serializer_class = TicketSerializer
-    
-class UserDetailView(generics.RetrieveUpdateDestroyAPIView):
-    """
-    GET    → obtiene un usuario.
-    PUT    → reemplaza un usuario.
-    PATCH  → modifica parcialmente un usuario.
-    DELETE → elimina un usuario.
-    """
+    permission_classes = [IsAdminOrClientCreate]
 
-    queryset = User.objects.all()
+    def get_queryset(self):
+        user = self.request.user
+        if not user.is_authenticated:
+            return Ticket.objects.none()
+        if user.role == "ADMINISTRADOR":
+            return Ticket.objects.all()
+        if user.role == "CLIENTE":
+            return Ticket.objects.filter(client__user=user)
+        if user.role == "ESPECIALISTA":
+            return Ticket.objects.filter(specialist__user=user)
+        if user.role == "TECNICO":
+            return Ticket.objects.filter(technician__user=user)
+        return Ticket.objects.none()
+
+    def perform_create(self, serializer):
+        serializer.save()
+
+
+class UserDetailView(generics.RetrieveUpdateDestroyAPIView):
+    """Usuario: cada usuario ve su propio perfil y los administradores todo."""
+
     serializer_class = UserSerializer
+    permission_classes = [IsAdminOrSelfProfile]
+
+    def get_queryset(self):
+        if self.request.user.role == "ADMINISTRADOR":
+            return User.objects.all()
+        return User.objects.filter(pk=self.request.user.pk)
 
 
 class ClientDetailView(generics.RetrieveUpdateDestroyAPIView):
-    """
-    GET, PUT, PATCH y DELETE para un cliente.
-    """
+    """Cliente: el dueño del cliente o el administrador pueden acceder."""
 
     queryset = Client.objects.all()
     serializer_class = ClientSerializer
+    permission_classes = [IsAdminOrSelfClient]
+
+    def get_queryset(self):
+        if self.request.user.role == "ADMINISTRADOR":
+            return Client.objects.all()
+        return Client.objects.filter(user=self.request.user)
 
 
 class ServiceDetailView(generics.RetrieveUpdateDestroyAPIView):
-    """
-    GET, PUT, PATCH y DELETE para un servicio.
-    """
+    """Servicio: lectura autenticada y escritura solo por administradores."""
 
     queryset = Service.objects.all()
     serializer_class = ServiceSerializer
+    permission_classes = [IsAdminOrReadOnly]
 
 
 class TicketDetailView(generics.RetrieveUpdateDestroyAPIView):
-    """
-    GET, PUT, PATCH y DELETE para un ticket.
-    """
+    """Ticket: lectura permitida solo a usuarios relacionados o administradores; escritura solo admin."""
 
-    queryset = Ticket.objects.all()
     serializer_class = TicketSerializer
+    permission_classes = [IsTicketRelatedOrAdmin]
+
+    def get_queryset(self):
+        user = self.request.user
+        if not user.is_authenticated:
+            return Ticket.objects.none()
+        if user.role == "ADMINISTRADOR":
+            return Ticket.objects.all()
+        if user.role == "CLIENTE":
+            return Ticket.objects.filter(client__user=user)
+        if user.role == "ESPECIALISTA":
+            return Ticket.objects.filter(specialist__user=user)
+        if user.role == "TECNICO":
+            return Ticket.objects.filter(technician__user=user)
+        return Ticket.objects.none()
