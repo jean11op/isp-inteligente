@@ -5,11 +5,15 @@ from django.db.models.deletion import ProtectedError
 from users.models import User
 from clients.models import Client
 from services.models import Service
+from specialists.models import Specialist
+from technicians.models import Technician
 from tickets.models import Ticket
 from .permissions import (
     IsAdmin,
     IsAdminOrClientCreate,
     IsAdminOrReadOnly,
+    IsAdminOrOwnSpecialistProfile,
+    IsAdminOrOwnTechnicianProfile,
     IsAdminOrSelfClient,
     IsAdminOrSelfProfile,
     IsTicketRelatedOrAdmin,
@@ -19,6 +23,8 @@ from .serializers import (
     UserSerializer,
     ClientSerializer,
     ServiceSerializer,
+    SpecialistSerializer,
+    TechnicianSerializer,
     TicketSerializer,
 )
 
@@ -120,6 +126,38 @@ class ServiceDetailView(ProtectedDeleteMixin, generics.RetrieveUpdateDestroyAPIV
     queryset = Service.objects.all()
     serializer_class = ServiceSerializer
     permission_classes = [IsAdminOrReadOnly]
+
+
+class SpecialistListCreateView(generics.ListCreateAPIView):
+    queryset = Specialist.objects.select_related("user").all()
+    serializer_class = SpecialistSerializer
+    permission_classes = [IsAdmin]
+
+
+class SpecialistDetailView(ProtectedDeleteMixin, generics.RetrieveUpdateDestroyAPIView):
+    serializer_class = SpecialistSerializer
+    permission_classes = [IsAdminOrOwnSpecialistProfile]
+
+    def get_queryset(self):
+        if self.request.user.role == User.Role.ADMINISTRADOR:
+            return Specialist.objects.select_related("user").all()
+        return Specialist.objects.filter(user=self.request.user).select_related("user")
+
+
+class TechnicianListCreateView(generics.ListCreateAPIView):
+    queryset = Technician.objects.select_related("user").all()
+    serializer_class = TechnicianSerializer
+    permission_classes = [IsAdmin]
+
+
+class TechnicianDetailView(ProtectedDeleteMixin, generics.RetrieveUpdateDestroyAPIView):
+    serializer_class = TechnicianSerializer
+    permission_classes = [IsAdminOrOwnTechnicianProfile]
+
+    def get_queryset(self):
+        if self.request.user.role == User.Role.ADMINISTRADOR:
+            return Technician.objects.select_related("user").all()
+        return Technician.objects.filter(user=self.request.user).select_related("user")
 
 
 class TicketDetailView(ProtectedDeleteMixin, generics.RetrieveUpdateDestroyAPIView):

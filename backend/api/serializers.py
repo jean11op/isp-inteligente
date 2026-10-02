@@ -6,6 +6,8 @@ from rest_framework.exceptions import PermissionDenied
 from users.models import User
 from clients.models import Client
 from services.models import Service
+from specialists.models import Specialist
+from technicians.models import Technician
 from tickets.models import Ticket
 
 
@@ -115,6 +117,57 @@ class ServiceSerializer(serializers.ModelSerializer):
     class Meta:
         model = Service
         fields = "__all__"
+
+
+class UserBoundProfileSerializer(serializers.ModelSerializer):
+    user = serializers.PrimaryKeyRelatedField(queryset=User.objects.all())
+    profile_model = None
+    user_role = None
+
+    def get_fields(self):
+        fields = super().get_fields()
+        if self.instance is not None:
+            fields["user"].read_only = True
+        return fields
+
+    def validate(self, attrs):
+        user = attrs.get("user", getattr(self.instance, "user", None))
+        if user and user.role != self.user_role:
+            raise serializers.ValidationError({"user": f"El usuario asociado debe tener el rol {self.user_role}."})
+
+        if user and self.profile_model.objects.filter(user=user).exclude(pk=getattr(self.instance, "pk", None)).exists():
+            raise serializers.ValidationError({"user": "El usuario ya tiene un perfil de este tipo."})
+        return attrs
+
+
+class SpecialistSerializer(UserBoundProfileSerializer):
+    profile_model = Specialist
+    user_role = User.Role.ESPECIALISTA
+
+    class Meta:
+        model = Specialist
+        fields = ["id", "user", "especialidad", "disponible", "activo", "fecha_registro"]
+        read_only_fields = ["id", "fecha_registro"]
+
+
+class TechnicianSerializer(UserBoundProfileSerializer):
+    profile_model = Technician
+    user_role = User.Role.TECNICO
+
+    class Meta:
+        model = Technician
+        fields = [
+            "id",
+            "user",
+            "especialidad",
+            "disponible",
+            "latitud",
+            "longitud",
+            "carga_trabajo",
+            "activo",
+            "fecha_registro",
+        ]
+        read_only_fields = ["id", "carga_trabajo", "fecha_registro"]
 
 
 class TicketSerializer(serializers.ModelSerializer):
@@ -230,6 +283,17 @@ class TicketSerializer(serializers.ModelSerializer):
                 unexpected_fields = set(attrs) - self.ROLE_UPDATE_FIELDS[role]
                 if unexpected_fields:
                     raise PermissionDenied("No tienes permisos para modificar esos campos del ticket.")
+
+            specialist = attrs.get("specialist")
+            if specialist is not None and specialist.user.role != User.Role.ESPECIALISTA:
+                raise serializers.ValidationError({"specialist": "El perfil debe pertenecer a un usuario ESPECIALISTA."})
+
+            technician = attrs.get("technician")
+            if technician is not None:
+                if technician.user.role != User.Role.TECNICO:
+                    raise serializers.ValidationError({"technician": "El perfil debe pertenecer a un usuario TECNICO."})
+                if technician != self.instance.technician and (not technician.activo or not technician.disponible):
+                    raise serializers.ValidationError({"technician": "El técnico debe estar activo y disponible para asignarse."})
 
             if "estado" in attrs:
                 current_status = self.instance.estado

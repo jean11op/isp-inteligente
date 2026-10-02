@@ -32,6 +32,30 @@ class IsTechnician(BasePermission):
         return request.user.is_authenticated and request.user.role == "TECNICO"
 
 
+class IsAdminOrOwnSpecialistProfile(BasePermission):
+    def has_permission(self, request, view):
+        return request.user.is_authenticated and request.user.role in {"ADMINISTRADOR", "ESPECIALISTA"}
+
+    def has_object_permission(self, request, view, obj):
+        if request.user.role == "ADMINISTRADOR":
+            return True
+        if obj.user != request.user:
+            return False
+        return request.method in SAFE_METHODS or request.method in {"PUT", "PATCH"}
+
+
+class IsAdminOrOwnTechnicianProfile(BasePermission):
+    def has_permission(self, request, view):
+        return request.user.is_authenticated and request.user.role in {"ADMINISTRADOR", "TECNICO"}
+
+    def has_object_permission(self, request, view, obj):
+        if request.user.role == "ADMINISTRADOR":
+            return True
+        if obj.user != request.user:
+            return False
+        return request.method in SAFE_METHODS or request.method in {"PUT", "PATCH"}
+
+
 class IsAdminOrReadOnly(BasePermission):
     """Permite lectura a cualquier usuario autenticado y escritura solo a administradores."""
 

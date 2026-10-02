@@ -432,6 +432,184 @@ class AuthAndPermissionTests(APITestCase):
         self.ticket.refresh_from_db()
         self.assertEqual(self.ticket.estado, Ticket.Status.CERRADO)
 
+    def test_admin_can_list_specialists(self):
+        self.client.force_authenticate(user=self.admin)
+        response = self.client.get(reverse("specialist-list-create"))
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(response.data), 1)
+
+    def test_specialist_can_view_own_profile(self):
+        self.client.force_authenticate(user=self.specialist_user)
+        response = self.client.get(reverse("specialist-detail", args=[self.specialist.pk]))
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data["id"], self.specialist.pk)
+
+    def test_specialist_cannot_modify_another_specialist(self):
+        other_user = User.objects.create_user(
+            username="especialista2",
+            password="Password123",
+            role=User.Role.ESPECIALISTA,
+        )
+        other_specialist = Specialist.objects.create(user=other_user, especialidad="Radioenlaces")
+        self.client.force_authenticate(user=self.specialist_user)
+        response = self.client.patch(
+            reverse("specialist-detail", args=[other_specialist.pk]),
+            {"especialidad": "Modificada"},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+        other_specialist.refresh_from_db()
+        self.assertEqual(other_specialist.especialidad, "Radioenlaces")
+
+    def test_admin_can_list_technicians(self):
+        self.client.force_authenticate(user=self.admin)
+        response = self.client.get(reverse("technician-list-create"))
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(response.data), 1)
+
+    def test_technician_can_view_own_profile(self):
+        self.client.force_authenticate(user=self.technician_user)
+        response = self.client.get(reverse("technician-detail", args=[self.technician.pk]))
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data["id"], self.technician.pk)
+        self.assertIn("carga_trabajo", response.data)
+
+    def test_technician_cannot_modify_another_technician(self):
+        other_user = User.objects.create_user(
+            username="tecnico2",
+            password="Password123",
+            role=User.Role.TECNICO,
+        )
+        other_technician = Technician.objects.create(user=other_user, especialidad="Radioenlaces")
+        self.client.force_authenticate(user=self.technician_user)
+        response = self.client.patch(
+            reverse("technician-detail", args=[other_technician.pk]),
+            {"especialidad": "Modificada"},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+        other_technician.refresh_from_db()
+        self.assertEqual(other_technician.especialidad, "Radioenlaces")
+
+    def test_admin_can_assign_specialist_to_ticket(self):
+        self.client.force_authenticate(user=self.admin)
+        response = self.client.patch(
+            reverse("ticket-detail", args=[self.other_ticket.pk]),
+            {"specialist": self.specialist.pk},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.other_ticket.refresh_from_db()
+        self.assertEqual(self.other_ticket.specialist, self.specialist)
+
+    def test_client_cannot_assign_specialist_to_ticket(self):
+        self.client.force_authenticate(user=self.client_user)
+        response = self.client.patch(
+            reverse("ticket-detail", args=[self.ticket.pk]),
+            {"specialist": self.specialist.pk},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_admin_can_assign_available_technician(self):
+        self.client.force_authenticate(user=self.admin)
+        response = self.client.patch(
+            reverse("ticket-detail", args=[self.other_ticket.pk]),
+            {"technician": self.technician.pk},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.other_ticket.refresh_from_db()
+        self.assertEqual(self.other_ticket.technician, self.technician)
+
+    def test_admin_cannot_assign_unavailable_technician(self):
+        self.technician.disponible = False
+        self.technician.save(update_fields=["disponible"])
+        self.client.force_authenticate(user=self.admin)
+        response = self.client.patch(
+            reverse("ticket-detail", args=[self.other_ticket.pk]),
+            {"technician": self.technician.pk},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.other_ticket.refresh_from_db()
+        self.assertIsNone(self.other_ticket.technician)
+
+    def test_non_admin_roles_cannot_make_staff_assignments(self):
+        attempts = (
+            (self.client_user, self.ticket, {"specialist": self.specialist.pk}),
+            (self.specialist_user, self.ticket, {"technician": self.technician.pk}),
+            (self.technician_user, self.ticket, {"specialist": self.specialist.pk}),
+        )
+
+        for user, ticket, payload in attempts:
+            with self.subTest(role=user.role):
+                self.client.force_authenticate(user=user)
+                response = self.client.patch(
+                    reverse("ticket-detail", args=[ticket.pk]),
+                    payload,
+                    format="json",
+                )
+                self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_ticket_cannot_be_marked_technician_assigned_without_technician(self):
+        self.other_ticket.estado = Ticket.Status.REQUIERE_VISITA
+        self.other_ticket.save(update_fields=["estado"])
+        self.client.force_authenticate(user=self.admin)
+        url = reverse("ticket-detail", args=[self.other_ticket.pk])
+
+        missing_technician_response = self.client.patch(
+            url,
+            {"estado": Ticket.Status.TECNICO_ASIGNADO},
+            format="json",
+        )
+        self.assertEqual(missing_technician_response.status_code, status.HTTP_400_BAD_REQUEST)
+
+        assigned_response = self.client.patch(
+            url,
+            {"technician": self.technician.pk, "estado": Ticket.Status.TECNICO_ASIGNADO},
+            format="json",
+        )
+        self.assertEqual(assigned_response.status_code, status.HTTP_200_OK)
+        self.other_ticket.refresh_from_db()
+        self.assertEqual(self.other_ticket.technician, self.technician)
+        self.assertEqual(self.other_ticket.estado, Ticket.Status.TECNICO_ASIGNADO)
+
+    def test_admin_cannot_assign_profiles_with_wrong_user_roles(self):
+        invalid_specialist = Specialist.objects.create(
+            user=self.other_client_user,
+            especialidad="Perfil inválido",
+        )
+        invalid_technician = Technician.objects.create(
+            user=self.other_client_user,
+            especialidad="Perfil inválido",
+        )
+        self.client.force_authenticate(user=self.admin)
+
+        specialist_response = self.client.patch(
+            reverse("ticket-detail", args=[self.other_ticket.pk]),
+            {"specialist": invalid_specialist.pk},
+            format="json",
+        )
+        technician_response = self.client.patch(
+            reverse("ticket-detail", args=[self.other_ticket.pk]),
+            {"technician": invalid_technician.pk},
+            format="json",
+        )
+
+        self.assertEqual(specialist_response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(technician_response.status_code, status.HTTP_400_BAD_REQUEST)
+
     def test_client_cannot_change_its_role_to_admin(self):
         self.client.force_authenticate(user=self.client_user)
         response = self.client.patch(

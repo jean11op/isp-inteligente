@@ -7,6 +7,10 @@ from .views import (
     ClientDetailView,
     ServiceListCreateView,
     ServiceDetailView,
+    SpecialistListCreateView,
+    SpecialistDetailView,
+    TechnicianListCreateView,
+    TechnicianDetailView,
     TicketListCreateView,
     TicketDetailView,
 )
@@ -51,6 +55,30 @@ urlpatterns = [
         "services/<int:pk>/",
         ServiceDetailView.as_view(),
         name="service-detail"
+    ),
+
+    # Especialistas
+    path(
+        "specialists/",
+        SpecialistListCreateView.as_view(),
+        name="specialist-list-create"
+    ),
+    path(
+        "specialists/<int:pk>/",
+        SpecialistDetailView.as_view(),
+        name="specialist-detail"
+    ),
+
+    # Tecnicos
+    path(
+        "technicians/",
+        TechnicianListCreateView.as_view(),
+        name="technician-list-create"
+    ),
+    path(
+        "technicians/<int:pk>/",
+        TechnicianDetailView.as_view(),
+        name="technician-detail"
     ),
 
     # Tickets
