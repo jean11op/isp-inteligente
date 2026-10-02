@@ -115,6 +115,26 @@ class IsAdminOrTechnicianUsage(BasePermission):
         )
 
 
+class IsAdminOrClientEvaluation(BasePermission):
+    def has_permission(self, request, view):
+        if not request.user.is_authenticated:
+            return False
+        if request.user.role == "ADMINISTRADOR":
+            return request.method != "POST"
+        if request.user.role == "CLIENTE":
+            return request.method in SAFE_METHODS or request.method == "POST"
+        return False
+
+    def has_object_permission(self, request, view, obj):
+        if request.user.role == "ADMINISTRADOR":
+            return True
+        return (
+            request.user.role == "CLIENTE"
+            and request.method in SAFE_METHODS
+            and obj.ticket.client.user_id == request.user.pk
+        )
+
+
 class IsAdminOrReadOnly(BasePermission):
     """Permite lectura a cualquier usuario autenticado y escritura solo a administradores."""
 

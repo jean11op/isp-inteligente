@@ -13,6 +13,7 @@ from tickets.models import Ticket
 from visits.models import Visit
 from django.utils import timezone
 from inventory.models import InventoryItem, InventoryUsage
+from evaluations.models import Evaluation
 
 
 class UserSerializer(serializers.ModelSerializer):
@@ -509,3 +510,33 @@ class InventoryUsageSerializer(serializers.ModelSerializer):
         usage.cantidad = new_quantity
         usage.save(update_fields=["visit", "item", "cantidad"])
         return usage
+
+
+class EvaluationSerializer(serializers.ModelSerializer):
+    puntuacion = serializers.IntegerField(min_value=1, max_value=5)
+    ticket = serializers.PrimaryKeyRelatedField(queryset=Ticket.objects.all())
+
+    class Meta:
+        model = Evaluation
+        fields = ["id", "ticket", "puntuacion", "comentario", "fecha_evaluacion"]
+        read_only_fields = ["id", "fecha_evaluacion"]
+
+    def get_fields(self):
+        fields = super().get_fields()
+        if self.instance is not None:
+            fields["ticket"].read_only = True
+        return fields
+
+    def validate(self, attrs):
+        request = self.context.get("request")
+        if self.instance is None and request and request.user.is_authenticated:
+            ticket = attrs.get("ticket")
+            if ticket is None:
+                raise serializers.ValidationError({"ticket": "Este campo es obligatorio."})
+            if ticket.client.user_id != request.user.pk:
+                raise PermissionDenied("Solo puedes evaluar tus propios tickets.")
+            if ticket.estado not in {Ticket.Status.RESUELTO, Ticket.Status.CERRADO}:
+                raise serializers.ValidationError({"ticket": "Solo se pueden evaluar tickets resueltos o cerrados."})
+            if Evaluation.objects.filter(ticket=ticket).exists():
+                raise serializers.ValidationError({"ticket": "Este ticket ya tiene una evaluación."})
+        return attrs

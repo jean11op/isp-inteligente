@@ -11,6 +11,7 @@ from technicians.models import Technician
 from tickets.models import Ticket
 from visits.models import Visit
 from inventory.models import InventoryItem, InventoryUsage
+from evaluations.models import Evaluation
 from .permissions import (
     IsAdmin,
     IsAdminOrClientCreate,
@@ -23,6 +24,7 @@ from .permissions import (
     IsAdminOrVisitParticipant,
     IsAdminOrTechnicianInventoryReadOnly,
     IsAdminOrTechnicianUsage,
+    IsAdminOrClientEvaluation,
 )
 
 from .serializers import (
@@ -35,6 +37,7 @@ from .serializers import (
     VisitSerializer,
     InventoryItemSerializer,
     InventoryUsageSerializer,
+    EvaluationSerializer,
 )
 
 
@@ -261,6 +264,27 @@ class InventoryUsageDetailView(generics.RetrieveUpdateDestroyAPIView):
         item.cantidad += usage.cantidad
         item.save(update_fields=["cantidad"])
         usage.delete()
+
+
+class EvaluationListCreateView(generics.ListCreateAPIView):
+    serializer_class = EvaluationSerializer
+    permission_classes = [IsAdminOrClientEvaluation]
+
+    def get_queryset(self):
+        queryset = Evaluation.objects.select_related("ticket__client__user")
+        if self.request.user.role == User.Role.ADMINISTRADOR:
+            return queryset
+        if self.request.user.role == User.Role.CLIENTE:
+            return queryset.filter(ticket__client__user=self.request.user)
+        return Evaluation.objects.none()
+
+
+class EvaluationDetailView(generics.RetrieveUpdateDestroyAPIView):
+    serializer_class = EvaluationSerializer
+    permission_classes = [IsAdminOrClientEvaluation]
+
+    def get_queryset(self):
+        return EvaluationListCreateView.get_queryset(self)
 
 
 class TicketDetailView(ProtectedDeleteMixin, generics.RetrieveUpdateDestroyAPIView):
