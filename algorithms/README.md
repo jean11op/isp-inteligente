@@ -54,6 +54,61 @@ La heurística para A* debe ser admisible para garantizar optimalidad. Para
 Greedy puede utilizarse una estimación aproximada, teniendo presente que el
 algoritmo no promete la ruta de menor costo.
 
+### Itinerario de varias visitas
+
+`algorithms.route_planning` ordena las visitas pendientes de un técnico a partir
+de una matriz dirigida de tiempos y distancias. Minimiza primero el tiempo de
+desplazamiento (la duración ya puede incluir tráfico), usa distancia como
+desempate y no utiliza tramos bloqueados. Devuelve el orden, las métricas por
+tramo, incidentes asociados y geometría opcional para dibujar la ruta. También
+considera la duración de atención de cada visita en el tiempo total de jornada.
+
+Hasta 12 visitas, `optimize_itinerary` usa Held-Karp y encuentra el mejor orden
+para la matriz suministrada. Para más visitas usa vecino más cercano con mejora
+2-opt y marca el resultado como aproximado. La optimización cubre una ruta para
+un técnico ya elegido; no reasigna técnicos ni impone ventanas horarias o
+prioridades de visita, porque esos criterios deben acordarse con Backend.
+
+```python
+from algorithms.route_planning import (
+    RouteStop,
+    TravelEstimate,
+    TravelMatrix,
+    optimize_itinerary,
+)
+
+start = RouteStop("tecnico-1", -8.11, -79.03)
+stops = [
+    RouteStop("visita-20", -8.10, -79.02, service_duration_seconds=1800),
+    RouteStop("visita-21", -8.12, -79.01, service_duration_seconds=2400),
+]
+matrix = TravelMatrix([start.stop_id, *(stop.stop_id for stop in stops)])
+matrix.add_estimate("tecnico-1", "visita-20", TravelEstimate(900, 1800))
+matrix.add_estimate("tecnico-1", "visita-21", TravelEstimate(600, 2400))
+matrix.add_estimate("visita-20", "visita-21", TravelEstimate(300, 700))
+matrix.add_estimate("visita-21", "visita-20", TravelEstimate(720, 1600))
+
+result = optimize_itinerary(start, stops, matrix)
+print(result.to_dict())
+```
+
+`TravelEstimate` puede llevar incidentes y geometría por tramo. Para un cierre,
+el proveedor marcará el par como bloqueado o no lo incluirá en la matriz; si la
+API devuelve un tiempo mayor por congestión, ese tiempo eleva el costo y puede
+cambiar el orden de las visitas. Al terminar una atención, Backend puede pedir
+una matriz nueva desde la ubicación actual y volver a optimizar solo las visitas
+pendientes.
+
+### Apartado de Google Routes (inactivo)
+
+`algorithms.integrations.GoogleRoutesAdapter` reserva el límite entre el
+proveedor externo y el planificador. En esta entrega no contiene solicitudes
+HTTP, no lee `GOOGLE_MAPS_API_KEY` y siempre falla explícitamente indicando que
+la integración sigue pendiente. Por ello no consume eventos en importaciones,
+ejecuciones del algoritmo ni pruebas con matrices simuladas. La conexión real
+se añadirá en otro bloque después de acordar los campos con Backend y Frontend,
+y se probará de forma manual con clave restringida y cuotas.
+
 ## Diagnóstico (CU-40)
 
 `ISPDiagnosticEngine` recibe hechos estructurados y devuelve un
@@ -124,6 +179,11 @@ configuración del sistema.
   especialista del dominio.
 - Acordar con Backend el formato estructurado de hechos de entrada y la
   respuesta que presentará y persistirá.
+- Acordar con Backend y Frontend los campos de la matriz de viaje, la ubicación
+  actual del técnico, las ventanas horarias y las reglas de prioridad para las
+  visitas.
+- Implementar la conexión real de Google Routes en un PR separado; este bloque
+  deja únicamente el contrato inactivo para que no haya llamadas facturables.
 - Backend es responsable de validar permisos, estados, concurrencia y de
   persistir la asignación. Este módulo solo calcula.
 
