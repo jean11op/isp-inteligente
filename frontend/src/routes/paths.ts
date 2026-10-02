@@ -5,10 +5,16 @@ export const PATHS = {
   login: "/login",
   register: "/registro",
   client: "/cliente",
+  clientTickets: "/cliente/tickets",
+  clientNewTicket: "/cliente/tickets/nuevo",
   specialist: "/especialista",
   technician: "/tecnico",
   admin: "/admin",
 } as const;
+
+export function clientTicketPath(id: number): string {
+  return `${PATHS.clientTickets}/${id}`;
+}
 
 export const ROLE_HOME: Record<Role, string> = {
   CLIENTE: PATHS.client,
