@@ -1,6 +1,7 @@
 from django.contrib.auth.password_validation import validate_password
 from django.core.exceptions import ValidationError as DjangoValidationError
 from rest_framework import serializers
+from rest_framework.exceptions import PermissionDenied
 
 from users.models import User
 from clients.models import Client
@@ -148,6 +149,52 @@ class TicketSerializer(serializers.ModelSerializer):
         "specialist",
         "technician",
     }
+    VALID_TRANSITIONS = {
+        Ticket.Status.NUEVO: {Ticket.Status.EN_REVISION},
+        Ticket.Status.EN_REVISION: {
+            Ticket.Status.ESPERANDO_ESPECIALISTA,
+            Ticket.Status.DIAGNOSTICADO,
+        },
+        Ticket.Status.ESPERANDO_ESPECIALISTA: {
+            Ticket.Status.DIAGNOSTICADO,
+            Ticket.Status.ESCALADO,
+        },
+        Ticket.Status.DIAGNOSTICADO: {
+            Ticket.Status.REQUIERE_VISITA,
+            Ticket.Status.RESUELTO,
+        },
+        Ticket.Status.REQUIERE_VISITA: {Ticket.Status.TECNICO_ASIGNADO},
+        Ticket.Status.TECNICO_ASIGNADO: {Ticket.Status.EN_CAMINO},
+        Ticket.Status.EN_CAMINO: {Ticket.Status.EN_DOMICILIO},
+        Ticket.Status.EN_DOMICILIO: {Ticket.Status.EN_ATENCION},
+        Ticket.Status.EN_ATENCION: {
+            Ticket.Status.RESUELTO,
+            Ticket.Status.NO_RESUELTO,
+        },
+        Ticket.Status.NO_RESUELTO: {Ticket.Status.SEGUNDA_VISITA},
+        Ticket.Status.SEGUNDA_VISITA: {Ticket.Status.TECNICO_ASIGNADO},
+        Ticket.Status.RESUELTO: {Ticket.Status.CERRADO},
+    }
+    SPECIALIST_TRANSITIONS = {
+        (Ticket.Status.NUEVO, Ticket.Status.EN_REVISION),
+        (Ticket.Status.EN_REVISION, Ticket.Status.ESPERANDO_ESPECIALISTA),
+        (Ticket.Status.EN_REVISION, Ticket.Status.DIAGNOSTICADO),
+        (Ticket.Status.ESPERANDO_ESPECIALISTA, Ticket.Status.DIAGNOSTICADO),
+        (Ticket.Status.ESPERANDO_ESPECIALISTA, Ticket.Status.ESCALADO),
+        (Ticket.Status.DIAGNOSTICADO, Ticket.Status.REQUIERE_VISITA),
+        (Ticket.Status.DIAGNOSTICADO, Ticket.Status.RESUELTO),
+    }
+    TECHNICIAN_TRANSITIONS = {
+        (Ticket.Status.TECNICO_ASIGNADO, Ticket.Status.EN_CAMINO),
+        (Ticket.Status.EN_CAMINO, Ticket.Status.EN_DOMICILIO),
+        (Ticket.Status.EN_DOMICILIO, Ticket.Status.EN_ATENCION),
+        (Ticket.Status.EN_ATENCION, Ticket.Status.RESUELTO),
+        (Ticket.Status.EN_ATENCION, Ticket.Status.NO_RESUELTO),
+    }
+    ROLE_UPDATE_FIELDS = {
+        User.Role.ESPECIALISTA: {"estado", "diagnostico"},
+        User.Role.TECNICO: {"estado", "solucion"},
+    }
 
     def get_fields(self):
         fields = super().get_fields()
@@ -159,6 +206,11 @@ class TicketSerializer(serializers.ModelSerializer):
 
     def validate(self, attrs):
         request = self.context.get("request")
+        if self.instance is None:
+            requested_status = self.initial_data.get("estado")
+            if requested_status and requested_status != Ticket.Status.NUEVO:
+                raise serializers.ValidationError({"estado": "Un ticket nuevo debe iniciar en estado NUEVO."})
+
         if request and request.user.is_authenticated and request.user.role == User.Role.CLIENTE:
             unexpected_fields = set(self.initial_data) - self.CLIENT_CREATE_FIELDS
             if unexpected_fields:
@@ -171,6 +223,30 @@ class TicketSerializer(serializers.ModelSerializer):
             client = Client.objects.filter(user=request.user).select_related("service").first()
             if client is None:
                 raise serializers.ValidationError({"client": "El usuario no tiene un perfil de cliente asociado."})
+
+        if request and request.user.is_authenticated and self.instance is not None:
+            role = request.user.role
+            if role in self.ROLE_UPDATE_FIELDS:
+                unexpected_fields = set(attrs) - self.ROLE_UPDATE_FIELDS[role]
+                if unexpected_fields:
+                    raise PermissionDenied("No tienes permisos para modificar esos campos del ticket.")
+
+            if "estado" in attrs:
+                current_status = self.instance.estado
+                new_status = attrs["estado"]
+                if new_status not in self.VALID_TRANSITIONS.get(current_status, set()):
+                    raise serializers.ValidationError({"estado": "La transición solicitada no es válida."})
+
+                transition = (current_status, new_status)
+                if role == User.Role.ESPECIALISTA and transition not in self.SPECIALIST_TRANSITIONS:
+                    raise PermissionDenied("No tienes permisos para realizar esta transición.")
+                if role == User.Role.TECNICO and transition not in self.TECHNICIAN_TRANSITIONS:
+                    raise PermissionDenied("No tienes permisos para realizar esta transición.")
+
+                if new_status == Ticket.Status.TECNICO_ASIGNADO:
+                    technician = attrs.get("technician", self.instance.technician)
+                    if technician is None:
+                        raise serializers.ValidationError({"technician": "Asigna un técnico antes de cambiar el estado."})
         return attrs
 
     def create(self, validated_data):

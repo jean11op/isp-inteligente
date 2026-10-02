@@ -344,6 +344,94 @@ class AuthAndPermissionTests(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_409_CONFLICT)
         self.assertTrue(Client.objects.filter(pk=self.client_profile.pk).exists())
 
+    def test_ticket_transition_new_to_in_review(self):
+        self.client.force_authenticate(user=self.admin)
+        response = self.client.patch(
+            reverse("ticket-detail", args=[self.ticket.pk]),
+            {"estado": Ticket.Status.EN_REVISION},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.ticket.refresh_from_db()
+        self.assertEqual(self.ticket.estado, Ticket.Status.EN_REVISION)
+
+    def test_specialist_can_transition_to_diagnosed(self):
+        self.ticket.estado = Ticket.Status.EN_REVISION
+        self.ticket.save(update_fields=["estado"])
+        self.client.force_authenticate(user=self.specialist_user)
+        response = self.client.patch(
+            reverse("ticket-detail", args=[self.ticket.pk]),
+            {"estado": Ticket.Status.DIAGNOSTICADO, "diagnostico": "Enlace óptico inestable."},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.ticket.refresh_from_db()
+        self.assertEqual(self.ticket.estado, Ticket.Status.DIAGNOSTICADO)
+
+    def test_admin_cannot_skip_ticket_transitions(self):
+        self.client.force_authenticate(user=self.admin)
+        response = self.client.patch(
+            reverse("ticket-detail", args=[self.ticket.pk]),
+            {"estado": Ticket.Status.CERRADO},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.ticket.refresh_from_db()
+        self.assertEqual(self.ticket.estado, Ticket.Status.NUEVO)
+
+    def test_client_cannot_change_ticket_status(self):
+        self.client.force_authenticate(user=self.client_user)
+        response = self.client.patch(
+            reverse("ticket-detail", args=[self.ticket.pk]),
+            {"estado": Ticket.Status.EN_REVISION},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_technician_can_advance_assigned_ticket(self):
+        self.ticket.estado = Ticket.Status.EN_CAMINO
+        self.ticket.save(update_fields=["estado"])
+        self.client.force_authenticate(user=self.technician_user)
+        response = self.client.patch(
+            reverse("ticket-detail", args=[self.ticket.pk]),
+            {"estado": Ticket.Status.EN_DOMICILIO},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.ticket.refresh_from_db()
+        self.assertEqual(self.ticket.estado, Ticket.Status.EN_DOMICILIO)
+
+    def test_technician_cannot_perform_specialist_transition(self):
+        self.ticket.estado = Ticket.Status.EN_REVISION
+        self.ticket.save(update_fields=["estado"])
+        self.client.force_authenticate(user=self.technician_user)
+        response = self.client.patch(
+            reverse("ticket-detail", args=[self.ticket.pk]),
+            {"estado": Ticket.Status.DIAGNOSTICADO},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_admin_can_close_resolved_ticket(self):
+        self.ticket.estado = Ticket.Status.RESUELTO
+        self.ticket.save(update_fields=["estado"])
+        self.client.force_authenticate(user=self.admin)
+        response = self.client.patch(
+            reverse("ticket-detail", args=[self.ticket.pk]),
+            {"estado": Ticket.Status.CERRADO},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.ticket.refresh_from_db()
+        self.assertEqual(self.ticket.estado, Ticket.Status.CERRADO)
+
     def test_client_cannot_change_its_role_to_admin(self):
         self.client.force_authenticate(user=self.client_user)
         response = self.client.patch(

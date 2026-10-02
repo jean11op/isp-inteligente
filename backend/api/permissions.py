@@ -83,12 +83,16 @@ class IsAdminOrSelfClient(BasePermission):
 
 
 class IsTicketRelatedOrAdmin(BasePermission):
-    """Permite lectura a usuarios relacionados con un ticket; escritura solo a administradores."""
+    """Permite lectura relacionada y PATCH acotado a especialista/técnico asignados."""
 
     def has_permission(self, request, view):
         if not request.user.is_authenticated:
             return False
-        return request.method in SAFE_METHODS or request.user.role == "ADMINISTRADOR"
+        if request.method in SAFE_METHODS:
+            return True
+        if request.user.role == "ADMINISTRADOR":
+            return True
+        return request.method == "PATCH" and request.user.role in {"ESPECIALISTA", "TECNICO"}
 
     def has_object_permission(self, request, view, obj):
         if not request.user.is_authenticated:
@@ -97,17 +101,22 @@ class IsTicketRelatedOrAdmin(BasePermission):
         if request.user.role == "ADMINISTRADOR":
             return True
 
-        if request.method not in SAFE_METHODS:
-            return False
-
         if request.user.role == "CLIENTE":
-            return obj.client.user == request.user
+            return request.method in SAFE_METHODS and obj.client.user == request.user
 
         if request.user.role == "ESPECIALISTA":
-            return obj.specialist is not None and obj.specialist.user == request.user
+            return (
+                (request.method in SAFE_METHODS or request.method == "PATCH")
+                and obj.specialist is not None
+                and obj.specialist.user == request.user
+            )
 
         if request.user.role == "TECNICO":
-            return obj.technician is not None and obj.technician.user == request.user
+            return (
+                (request.method in SAFE_METHODS or request.method == "PATCH")
+                and obj.technician is not None
+                and obj.technician.user == request.user
+            )
 
         return False
 
