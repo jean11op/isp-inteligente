@@ -9,6 +9,8 @@ from services.models import Service
 from specialists.models import Specialist
 from technicians.models import Technician
 from tickets.models import Ticket
+from visits.models import Visit
+from django.utils import timezone
 
 
 class UserSerializer(serializers.ModelSerializer):
@@ -322,3 +324,93 @@ class TicketSerializer(serializers.ModelSerializer):
             validated_data["client"] = client
             validated_data["service"] = client.service
         return super().create(validated_data)
+
+
+class VisitSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Visit
+        fields = [
+            "id",
+            "ticket",
+            "technician",
+            "estado",
+            "fecha_programada",
+            "fecha_inicio",
+            "fecha_fin",
+            "resultado",
+            "observaciones",
+            "fecha_creacion",
+        ]
+        read_only_fields = ["id", "fecha_inicio", "fecha_fin", "fecha_creacion"]
+
+    VALID_TRANSITIONS = {
+        Visit.Status.PROGRAMADA: {Visit.Status.EN_CAMINO, Visit.Status.CANCELADA},
+        Visit.Status.EN_CAMINO: {Visit.Status.EN_DOMICILIO},
+        Visit.Status.EN_DOMICILIO: {Visit.Status.EN_ATENCION},
+        Visit.Status.EN_ATENCION: {Visit.Status.COMPLETADA},
+    }
+    TECHNICIAN_READ_ONLY_FIELDS = {
+        "ticket",
+        "technician",
+        "fecha_programada",
+        "fecha_inicio",
+        "fecha_fin",
+        "fecha_creacion",
+    }
+
+    def get_fields(self):
+        fields = super().get_fields()
+        request = self.context.get("request")
+        if self.instance is None:
+            fields["estado"].read_only = True
+        if request and request.user.is_authenticated and request.user.role == "TECNICO":
+            for field_name in self.TECHNICIAN_READ_ONLY_FIELDS:
+                fields[field_name].read_only = True
+        return fields
+
+    def validate(self, attrs):
+        request = self.context.get("request")
+        is_admin = request and request.user.is_authenticated and request.user.role == User.Role.ADMINISTRADOR
+
+        if self.instance is None:
+            requested_status = self.initial_data.get("estado")
+            if requested_status and requested_status != Visit.Status.PROGRAMADA:
+                raise serializers.ValidationError({"estado": "Una visita nueva debe iniciar en estado PROGRAMADA."})
+
+        if is_admin:
+            ticket = attrs.get("ticket")
+            technician = attrs.get("technician")
+            if self.instance is not None:
+                ticket = ticket or self.instance.ticket
+                technician = technician or self.instance.technician
+
+            if ticket is not None and ticket.estado != Ticket.Status.TECNICO_ASIGNADO:
+                raise serializers.ValidationError({"ticket": "El ticket debe estar en estado TECNICO_ASIGNADO."})
+            if ticket is not None and technician is not None and ticket.technician_id != technician.pk:
+                raise serializers.ValidationError({"technician": "El técnico debe coincidir con el asignado al ticket."})
+            if technician is not None:
+                if technician.user.role != User.Role.TECNICO:
+                    raise serializers.ValidationError({"technician": "El perfil debe pertenecer a un usuario TECNICO."})
+                if not technician.activo or not technician.disponible:
+                    raise serializers.ValidationError({"technician": "El técnico debe estar activo y disponible."})
+
+        if self.instance is not None and "estado" in attrs:
+            current_status = self.instance.estado
+            new_status = attrs["estado"]
+            if new_status not in self.VALID_TRANSITIONS.get(current_status, set()):
+                raise serializers.ValidationError({"estado": "La transición solicitada no es válida."})
+
+        if self.instance is not None:
+            fecha_inicio = self.instance.fecha_inicio
+            fecha_fin = self.instance.fecha_fin
+            if fecha_inicio and fecha_fin and fecha_fin < fecha_inicio:
+                raise serializers.ValidationError({"fecha_fin": "No puede ser anterior al inicio de la visita."})
+        return attrs
+
+    def update(self, instance, validated_data):
+        new_status = validated_data.get("estado")
+        if new_status == Visit.Status.EN_CAMINO and instance.fecha_inicio is None:
+            validated_data["fecha_inicio"] = timezone.now()
+        if new_status in {Visit.Status.COMPLETADA, Visit.Status.CANCELADA} and instance.fecha_fin is None:
+            validated_data["fecha_fin"] = timezone.now()
+        return super().update(instance, validated_data)

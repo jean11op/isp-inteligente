@@ -8,6 +8,7 @@ from services.models import Service
 from specialists.models import Specialist
 from technicians.models import Technician
 from tickets.models import Ticket
+from visits.models import Visit
 from .permissions import (
     IsAdmin,
     IsAdminOrClientCreate,
@@ -17,6 +18,7 @@ from .permissions import (
     IsAdminOrSelfClient,
     IsAdminOrSelfProfile,
     IsTicketRelatedOrAdmin,
+    IsAdminOrVisitParticipant,
 )
 
 from .serializers import (
@@ -26,6 +28,7 @@ from .serializers import (
     SpecialistSerializer,
     TechnicianSerializer,
     TicketSerializer,
+    VisitSerializer,
 )
 
 
@@ -158,6 +161,38 @@ class TechnicianDetailView(ProtectedDeleteMixin, generics.RetrieveUpdateDestroyA
         if self.request.user.role == User.Role.ADMINISTRADOR:
             return Technician.objects.select_related("user").all()
         return Technician.objects.filter(user=self.request.user).select_related("user")
+
+
+class VisitListCreateView(generics.ListCreateAPIView):
+    serializer_class = VisitSerializer
+    permission_classes = [IsAdminOrVisitParticipant]
+
+    def get_queryset(self):
+        user = self.request.user
+        if not user.is_authenticated:
+            return Visit.objects.none()
+        queryset = Visit.objects.select_related(
+            "ticket__client__user",
+            "ticket__specialist__user",
+            "technician__user",
+        )
+        if user.role == User.Role.ADMINISTRADOR:
+            return queryset
+        if user.role == User.Role.CLIENTE:
+            return queryset.filter(ticket__client__user=user)
+        if user.role == User.Role.ESPECIALISTA:
+            return queryset.filter(ticket__specialist__user=user)
+        if user.role == User.Role.TECNICO:
+            return queryset.filter(technician__user=user)
+        return Visit.objects.none()
+
+
+class VisitDetailView(ProtectedDeleteMixin, generics.RetrieveUpdateDestroyAPIView):
+    serializer_class = VisitSerializer
+    permission_classes = [IsAdminOrVisitParticipant]
+
+    def get_queryset(self):
+        return VisitListCreateView.get_queryset(self)
 
 
 class TicketDetailView(ProtectedDeleteMixin, generics.RetrieveUpdateDestroyAPIView):

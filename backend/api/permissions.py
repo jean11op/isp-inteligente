@@ -56,6 +56,36 @@ class IsAdminOrOwnTechnicianProfile(BasePermission):
         return request.method in SAFE_METHODS or request.method in {"PUT", "PATCH"}
 
 
+class IsAdminOrVisitParticipant(BasePermission):
+    def has_permission(self, request, view):
+        if not request.user.is_authenticated:
+            return False
+        if request.method in SAFE_METHODS:
+            return True
+        if request.user.role == "ADMINISTRADOR":
+            return True
+        return request.method in {"PUT", "PATCH"} and request.user.role == "TECNICO"
+
+    def has_object_permission(self, request, view, obj):
+        if request.user.role == "ADMINISTRADOR":
+            return True
+
+        if request.method in SAFE_METHODS:
+            if request.user.role == "CLIENTE":
+                return obj.ticket.client.user == request.user
+            if request.user.role == "ESPECIALISTA":
+                return obj.ticket.specialist is not None and obj.ticket.specialist.user == request.user
+            if request.user.role == "TECNICO":
+                return obj.technician.user == request.user
+            return False
+
+        return (
+            request.method in {"PUT", "PATCH"}
+            and request.user.role == "TECNICO"
+            and obj.technician.user == request.user
+        )
+
+
 class IsAdminOrReadOnly(BasePermission):
     """Permite lectura a cualquier usuario autenticado y escritura solo a administradores."""
 

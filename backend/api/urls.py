@@ -11,6 +11,8 @@ from .views import (
     SpecialistDetailView,
     TechnicianListCreateView,
     TechnicianDetailView,
+    VisitListCreateView,
+    VisitDetailView,
     TicketListCreateView,
     TicketDetailView,
 )
@@ -79,6 +81,18 @@ urlpatterns = [
         "technicians/<int:pk>/",
         TechnicianDetailView.as_view(),
         name="technician-detail"
+    ),
+
+    # Visitas tecnicas
+    path(
+        "visits/",
+        VisitListCreateView.as_view(),
+        name="visit-list-create"
+    ),
+    path(
+        "visits/<int:pk>/",
+        VisitDetailView.as_view(),
+        name="visit-detail"
     ),
 
     # Tickets
