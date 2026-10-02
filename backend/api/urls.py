@@ -1,5 +1,10 @@
 from django.urls import path
 
+from rest_framework_simplejwt.views import (
+    TokenObtainPairView,
+    TokenRefreshView,
+)
+
 from .views import (
     UserListCreateView,
     UserDetailView,
@@ -7,6 +12,20 @@ from .views import (
     ClientDetailView,
     ServiceListCreateView,
     ServiceDetailView,
+    SpecialistListCreateView,
+    SpecialistDetailView,
+    TechnicianListCreateView,
+    TechnicianDetailView,
+    VisitListCreateView,
+    VisitDetailView,
+    InventoryItemListCreateView,
+    InventoryItemDetailView,
+    InventoryUsageListCreateView,
+    InventoryUsageDetailView,
+    EvaluationListCreateView,
+    EvaluationDetailView,
+    TicketHistoryListView,
+    TicketHistoryDetailView,
     TicketListCreateView,
     TicketDetailView,
 )
@@ -53,6 +72,88 @@ urlpatterns = [
         name="service-detail"
     ),
 
+    # Especialistas
+    path(
+        "specialists/",
+        SpecialistListCreateView.as_view(),
+        name="specialist-list-create"
+    ),
+    path(
+        "specialists/<int:pk>/",
+        SpecialistDetailView.as_view(),
+        name="specialist-detail"
+    ),
+
+    # Tecnicos
+    path(
+        "technicians/",
+        TechnicianListCreateView.as_view(),
+        name="technician-list-create"
+    ),
+    path(
+        "technicians/<int:pk>/",
+        TechnicianDetailView.as_view(),
+        name="technician-detail"
+    ),
+
+    # Visitas tecnicas
+    path(
+        "visits/",
+        VisitListCreateView.as_view(),
+        name="visit-list-create"
+    ),
+    path(
+        "visits/<int:pk>/",
+        VisitDetailView.as_view(),
+        name="visit-detail"
+    ),
+
+    # Inventario
+    path(
+        "inventory/",
+        InventoryItemListCreateView.as_view(),
+        name="inventory-list-create"
+    ),
+    path(
+        "inventory/<int:pk>/",
+        InventoryItemDetailView.as_view(),
+        name="inventory-detail"
+    ),
+    path(
+        "inventory-usage/",
+        InventoryUsageListCreateView.as_view(),
+        name="inventory-usage-list-create"
+    ),
+    path(
+        "inventory-usage/<int:pk>/",
+        InventoryUsageDetailView.as_view(),
+        name="inventory-usage-detail"
+    ),
+
+    # Evaluaciones
+    path(
+        "evaluations/",
+        EvaluationListCreateView.as_view(),
+        name="evaluation-list-create"
+    ),
+    path(
+        "evaluations/<int:pk>/",
+        EvaluationDetailView.as_view(),
+        name="evaluation-detail"
+    ),
+
+    # Historial de tickets
+    path(
+        "history/",
+        TicketHistoryListView.as_view(),
+        name="history-list"
+    ),
+    path(
+        "history/<int:pk>/",
+        TicketHistoryDetailView.as_view(),
+        name="history-detail"
+    ),
+
     # Tickets
     path(
         "tickets/",
@@ -64,5 +165,19 @@ urlpatterns = [
         "tickets/<int:pk>/",
         TicketDetailView.as_view(),
         name="ticket-detail"
+    ),
+    
+    #AUTENTICACION 
+    
+    path(
+        "auth/token/",
+        TokenObtainPairView.as_view(),
+        name="token-obtain-pair",
+    ),
+
+    path(
+        "auth/token/refresh/",
+        TokenRefreshView.as_view(),
+        name="token-refresh",
     ),
 ]

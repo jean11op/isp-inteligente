@@ -147,3 +147,15 @@ MAILERS = {
 }
 
 AUTH_USER_MODEL = "users.User"
+
+REST_FRAMEWORK = {
+    # JWT será el mecanismo utilizado para autenticar las peticiones.
+    "DEFAULT_AUTHENTICATION_CLASSES": (
+        "rest_framework_simplejwt.authentication.JWTAuthentication",
+    ),
+
+    # Por defecto, todas las APIs requerirán un usuario autenticado.
+    "DEFAULT_PERMISSION_CLASSES": (
+        "rest_framework.permissions.IsAuthenticated",
+    ),
+}
