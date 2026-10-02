@@ -1,0 +1,102 @@
+{
+  "name": "technician-started",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "technician-started",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        -368,
+        -32
+      ],
+      "id": "9760c72d-bb21-44e9-b211-54fe603feb6f",
+      "name": "Webhook",
+      "webhookId": "ec5d8bb2-435d-40e4-8824-6a0d37a891db"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "073a2df2-1b06-4b1f-bb1b-498729a44040",
+              "name": "evento",
+              "value": "technician_started",
+              "type": "string"
+            },
+            {
+              "id": "db79347d-6086-4816-951f-efd9329d5320",
+              "name": "mensaje",
+              "value": "=El técnico {{ $json.body.tecnico }} va en camino a su domicilio (ticket #{{ $json.body.ticket_id }})",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.5,
+      "position": [
+        -144,
+        -32
+      ],
+      "id": "b0405273-1e03-454c-9ed6-8af8a9204a66",
+      "name": "Edit Fields"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        80,
+        -32
+      ],
+      "id": "885c36cc-d49a-42d7-9276-55cc8a47cc68",
+      "name": "Respond to Webhook"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "7687c4f4-bc1f-4140-9bb5-ca27c336d430",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "539bfee859c6f54f637a0610499282b123ebe260a8c25ddf80a4600c1fc26c27"
+  },
+  "nodeGroups": [],
+  "id": "wOzfNw3IQFeL7yWy",
+  "tags": []
+}

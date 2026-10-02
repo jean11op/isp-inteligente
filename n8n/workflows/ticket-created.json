@@ -31,7 +31,7 @@
             {
               "id": "db79347d-6086-4816-951f-efd9329d5320",
               "name": "mensaje",
-              "value": "=Ticket #{{ $json.body.ticket_id }} de {{ $json.body.cliente }} ({{ $json.body.prioridad }})",
+              "value": "=Ticket #{{ $json.body.ticket_id }} de {{ $json.body.cliente }}: {{ $json.body.tipo }} ({{ $json.body.prioridad }})",
               "type": "string"
             }
           ]
@@ -91,7 +91,7 @@
     "executionOrder": "v1",
     "binaryMode": "separate"
   },
-  "versionId": "889a1afb-13da-4355-988d-61d71a6b0dc2",
+  "versionId": "31be386f-3f9e-4483-b46a-a517b98c4291",
   "meta": {
     "instanceId": "539bfee859c6f54f637a0610499282b123ebe260a8c25ddf80a4600c1fc26c27"
   },
