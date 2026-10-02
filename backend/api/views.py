@@ -333,16 +333,32 @@ class TicketDetailView(ProtectedDeleteMixin, generics.RetrieveUpdateDestroyAPIVi
     serializer_class = TicketSerializer
     permission_classes = [IsTicketRelatedOrAdmin]
 
+    @transaction.atomic
+    def update(self, request, *args, **kwargs):
+        return super().update(request, *args, **kwargs)
+
     def get_queryset(self):
         user = self.request.user
         if not user.is_authenticated:
             return Ticket.objects.none()
         if user.role == "ADMINISTRADOR":
-            return Ticket.objects.all()
-        if user.role == "CLIENTE":
-            return Ticket.objects.filter(client__user=user)
-        if user.role == "ESPECIALISTA":
-            return Ticket.objects.filter(specialist__user=user)
-        if user.role == "TECNICO":
-            return Ticket.objects.filter(technician__user=user)
-        return Ticket.objects.none()
+            queryset = Ticket.objects.all()
+        elif user.role == "CLIENTE":
+            queryset = Ticket.objects.filter(client__user=user)
+        elif user.role == "ESPECIALISTA":
+            queryset = Ticket.objects.filter(specialist__user=user)
+        elif user.role == "TECNICO":
+            queryset = Ticket.objects.filter(technician__user=user)
+        else:
+            queryset = Ticket.objects.none()
+
+        if self.request.method in {"PUT", "PATCH"}:
+            return queryset.select_for_update()
+        return queryset
+
+    def perform_destroy(self, instance):
+        if instance.visits.filter(materials_used__isnull=False).exists():
+            raise ProtectedRelationConflict(
+                "No se puede eliminar un ticket con materiales registrados en sus visitas."
+            )
+        super().perform_destroy(instance)

@@ -175,3 +175,16 @@ class InventoryApiTests(APITestCase):
 		self.assertTrue(InventoryUsage.objects.filter(visit=self.visit).exists())
 		self.item.refresh_from_db()
 		self.assertEqual(self.item.cantidad, 9)
+
+	def test_ticket_with_usage_cannot_be_deleted_and_lose_stock_history(self):
+		self.item.cantidad = 9
+		self.item.save(update_fields=["cantidad"])
+		InventoryUsage.objects.create(visit=self.visit, item=self.item, cantidad=1)
+		self.client.force_authenticate(user=self.admin)
+		response = self.client.delete(reverse("ticket-detail", args=[self.ticket.pk]))
+
+		self.assertEqual(response.status_code, status.HTTP_409_CONFLICT)
+		self.assertTrue(Ticket.objects.filter(pk=self.ticket.pk).exists())
+		self.assertTrue(InventoryUsage.objects.filter(visit=self.visit).exists())
+		self.item.refresh_from_db()
+		self.assertEqual(self.item.cantidad, 9)
