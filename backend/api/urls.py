@@ -19,6 +19,8 @@ from .views import (
     InventoryUsageDetailView,
     EvaluationListCreateView,
     EvaluationDetailView,
+    TicketHistoryListView,
+    TicketHistoryDetailView,
     TicketListCreateView,
     TicketDetailView,
 )
@@ -133,6 +135,18 @@ urlpatterns = [
         "evaluations/<int:pk>/",
         EvaluationDetailView.as_view(),
         name="evaluation-detail"
+    ),
+
+    # Historial de tickets
+    path(
+        "history/",
+        TicketHistoryListView.as_view(),
+        name="history-list"
+    ),
+    path(
+        "history/<int:pk>/",
+        TicketHistoryDetailView.as_view(),
+        name="history-detail"
     ),
 
     # Tickets

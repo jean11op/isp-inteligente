@@ -14,6 +14,7 @@ from visits.models import Visit
 from django.utils import timezone
 from inventory.models import InventoryItem, InventoryUsage
 from evaluations.models import Evaluation
+from history.models import TicketHistory
 
 
 class UserSerializer(serializers.ModelSerializer):
@@ -328,6 +329,23 @@ class TicketSerializer(serializers.ModelSerializer):
             validated_data["service"] = client.service
         return super().create(validated_data)
 
+    @transaction.atomic
+    def update(self, instance, validated_data):
+        previous_status = instance.estado
+        new_status = validated_data.get("estado", previous_status)
+        ticket = super().update(instance, validated_data)
+
+        if new_status != previous_status:
+            request = self.context.get("request")
+            user = request.user if request and request.user.is_authenticated else None
+            TicketHistory.objects.create(
+                ticket=ticket,
+                user=user,
+                estado_anterior=previous_status,
+                estado_nuevo=new_status,
+            )
+        return ticket
+
 
 class VisitSerializer(serializers.ModelSerializer):
     class Meta:
@@ -540,3 +558,18 @@ class EvaluationSerializer(serializers.ModelSerializer):
             if Evaluation.objects.filter(ticket=ticket).exists():
                 raise serializers.ValidationError({"ticket": "Este ticket ya tiene una evaluación."})
         return attrs
+
+
+class TicketHistorySerializer(serializers.ModelSerializer):
+    class Meta:
+        model = TicketHistory
+        fields = [
+            "id",
+            "ticket",
+            "user",
+            "estado_anterior",
+            "estado_nuevo",
+            "comentario",
+            "fecha",
+        ]
+        read_only_fields = fields

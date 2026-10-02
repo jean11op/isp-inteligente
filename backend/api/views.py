@@ -1,6 +1,8 @@
 from rest_framework import generics
+from rest_framework.permissions import IsAuthenticated
 from rest_framework.exceptions import APIException
 from django.db import transaction
+from django.db.models import Q
 from django.db.models.deletion import ProtectedError
 
 from users.models import User
@@ -12,6 +14,7 @@ from tickets.models import Ticket
 from visits.models import Visit
 from inventory.models import InventoryItem, InventoryUsage
 from evaluations.models import Evaluation
+from history.models import TicketHistory
 from .permissions import (
     IsAdmin,
     IsAdminOrClientCreate,
@@ -38,6 +41,7 @@ from .serializers import (
     InventoryItemSerializer,
     InventoryUsageSerializer,
     EvaluationSerializer,
+    TicketHistorySerializer,
 )
 
 
@@ -285,6 +289,42 @@ class EvaluationDetailView(generics.RetrieveUpdateDestroyAPIView):
 
     def get_queryset(self):
         return EvaluationListCreateView.get_queryset(self)
+
+
+def ticket_history_queryset(user):
+    queryset = TicketHistory.objects.select_related(
+        "ticket__client__user",
+        "ticket__specialist__user",
+        "ticket__technician__user",
+        "user",
+    )
+    if user.role == User.Role.ADMINISTRADOR:
+        return queryset
+    if user.role == User.Role.CLIENTE:
+        return queryset.filter(ticket__client__user=user)
+    if user.role == User.Role.ESPECIALISTA:
+        return queryset.filter(ticket__specialist__user=user)
+    if user.role == User.Role.TECNICO:
+        return queryset.filter(
+            Q(ticket__technician__user=user) | Q(ticket__visits__technician__user=user)
+        ).distinct()
+    return TicketHistory.objects.none()
+
+
+class TicketHistoryListView(generics.ListAPIView):
+    serializer_class = TicketHistorySerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        return ticket_history_queryset(self.request.user)
+
+
+class TicketHistoryDetailView(generics.RetrieveAPIView):
+    serializer_class = TicketHistorySerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        return ticket_history_queryset(self.request.user)
 
 
 class TicketDetailView(ProtectedDeleteMixin, generics.RetrieveUpdateDestroyAPIView):
