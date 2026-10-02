@@ -1,3 +1,8 @@
+import { Navigate } from "react-router";
+import { useAuth } from "../features/auth/useAuth";
+import { PATHS, ROLE_HOME } from "../routes/paths";
+
 export default function HomePage() {
-  return <h1>ISP Inteligente</h1>;
+  const { user } = useAuth();
+  return <Navigate to={user ? ROLE_HOME[user.role] : PATHS.login} replace />;
 }
