@@ -1,0 +1,105 @@
+{
+  "name": "ticket-created",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "ticket-created",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        -368,
+        -32
+      ],
+      "id": "285b2ab4-ec5c-441a-9b16-76014ab60b54",
+      "name": "Webhook",
+      "webhookId": "bef8c718-533e-4a70-bac7-f8d55eea2b2d"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "59b011ed-8d8d-4334-83db-8992595a519c",
+              "name": "evento",
+              "value": "ticket_created",
+              "type": "string"
+            },
+            {
+              "id": "db79347d-6086-4816-951f-efd9329d5320",
+              "name": "mensaje",
+              "value": "=Ticket #{{ $json.body.ticket_id }} de {{ $json.body.cliente }}: {{ $json.body.tipo }} ({{ $json.body.prioridad }})",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.5,
+      "position": [
+        -144,
+        -32
+      ],
+      "id": "a39b8e83-61f2-49de-bea7-e99403f9af47",
+      "name": "Edit Fields"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        80,
+        -32
+      ],
+      "id": "30b882ef-6ad8-4e8c-99a9-312baee9b749",
+      "name": "Respond to Webhook"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "timeSavedMode": "fixed",
+    "errorWorkflow": "YvOgrBljkkgmR7cC",
+    "callerPolicy": "workflowsFromSameOwner",
+    "availableInMCP": false
+  },
+  "versionId": "31be386f-3f9e-4483-b46a-a517b98c4291",
+  "meta": {
+    "instanceId": "539bfee859c6f54f637a0610499282b123ebe260a8c25ddf80a4600c1fc26c27"
+  },
+  "nodeGroups": [],
+  "id": "hr8fpe3ecTWc5wrM",
+  "tags": []
+}

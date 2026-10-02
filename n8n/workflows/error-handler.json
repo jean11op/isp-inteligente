@@ -1,0 +1,77 @@
+{
+  "name": "error-handler",
+  "nodes": [
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.errorTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        0
+      ],
+      "id": "b4de9548-afd9-4999-96ed-2ae83ed58a3d",
+      "name": "Error Trigger"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "888798dc-4f36-41fb-9fd2-ba8cc1b7189a",
+              "name": "evento",
+              "value": "workflow_error",
+              "type": "string"
+            },
+            {
+              "id": "7fae58c6-7d7b-4bab-a9ac-fffcbf44fef0",
+              "name": "mensaje",
+              "value": "=Falló el workflow {{ $json.workflow.name }}: {{ $json.execution.error.message }}",
+              "type": "string"
+            },
+            {
+              "id": "7fddc639-f327-4f49-8637-1fc61f822c6d",
+              "name": "url",
+              "value": "={{ $json.execution.url }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.5,
+      "position": [
+        224,
+        0
+      ],
+      "id": "cff841f1-8399-475a-875f-c65a89163f19",
+      "name": "Edit Fields"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Error Trigger": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "5a3e236f-df7f-46b8-b260-d7a9c5bf3e91",
+  "meta": {
+    "instanceId": "539bfee859c6f54f637a0610499282b123ebe260a8c25ddf80a4600c1fc26c27"
+  },
+  "nodeGroups": [],
+  "id": "YvOgrBljkkgmR7cC",
+  "tags": []
+}
