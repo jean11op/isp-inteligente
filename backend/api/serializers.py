@@ -1,5 +1,6 @@
 from django.contrib.auth.password_validation import validate_password
 from django.core.exceptions import ValidationError as DjangoValidationError
+from django.db import transaction
 from rest_framework import serializers
 from rest_framework.exceptions import PermissionDenied
 
@@ -11,6 +12,7 @@ from technicians.models import Technician
 from tickets.models import Ticket
 from visits.models import Visit
 from django.utils import timezone
+from inventory.models import InventoryItem, InventoryUsage
 
 
 class UserSerializer(serializers.ModelSerializer):
@@ -414,3 +416,96 @@ class VisitSerializer(serializers.ModelSerializer):
         if new_status in {Visit.Status.COMPLETADA, Visit.Status.CANCELADA} and instance.fecha_fin is None:
             validated_data["fecha_fin"] = timezone.now()
         return super().update(instance, validated_data)
+
+
+class InventoryItemSerializer(serializers.ModelSerializer):
+    cantidad = serializers.IntegerField(min_value=0)
+
+    class Meta:
+        model = InventoryItem
+        fields = ["id", "nombre", "descripcion", "cantidad", "unidad", "activo", "fecha_creacion"]
+        read_only_fields = ["id", "fecha_creacion"]
+
+
+class InventoryUsageSerializer(serializers.ModelSerializer):
+    cantidad = serializers.IntegerField(min_value=1)
+
+    class Meta:
+        model = InventoryUsage
+        fields = ["id", "visit", "item", "cantidad", "fecha_registro"]
+        read_only_fields = ["id", "fecha_registro"]
+
+    def validate(self, attrs):
+        visit = attrs.get("visit", getattr(self.instance, "visit", None))
+        item = attrs.get("item", getattr(self.instance, "item", None))
+        quantity = attrs.get("cantidad", getattr(self.instance, "cantidad", None))
+        request = self.context.get("request")
+
+        if request and request.user.is_authenticated and request.user.role == User.Role.TECNICO:
+            if visit.technician.user_id != request.user.pk:
+                raise PermissionDenied("Solo puedes registrar materiales en tus propias visitas.")
+
+        if item is not None:
+            changing_item = self.instance is None or item.pk != self.instance.item_id
+            if changing_item and not item.activo:
+                raise serializers.ValidationError({"item": "No se puede utilizar un material inactivo."})
+
+            if quantity is not None:
+                available = item.cantidad
+                if self.instance is not None and item.pk == self.instance.item_id:
+                    available += self.instance.cantidad
+                if quantity > available:
+                    raise serializers.ValidationError({"cantidad": "La cantidad supera el stock disponible."})
+        return attrs
+
+    @transaction.atomic
+    def create(self, validated_data):
+        item = InventoryItem.objects.select_for_update().get(pk=validated_data["item"].pk)
+        quantity = validated_data["cantidad"]
+        if not item.activo:
+            raise serializers.ValidationError({"item": "No se puede utilizar un material inactivo."})
+        if quantity > item.cantidad:
+            raise serializers.ValidationError({"cantidad": "La cantidad supera el stock disponible."})
+
+        item.cantidad -= quantity
+        item.save(update_fields=["cantidad"])
+        validated_data["item"] = item
+        return InventoryUsage.objects.create(**validated_data)
+
+    @transaction.atomic
+    def update(self, instance, validated_data):
+        usage = InventoryUsage.objects.select_for_update().get(pk=instance.pk)
+        old_item_id = usage.item_id
+        new_item = validated_data.get("item", usage.item)
+        new_quantity = validated_data.get("cantidad", usage.cantidad)
+
+        locked_items = {
+            item.pk: item
+            for item in InventoryItem.objects.select_for_update()
+            .filter(pk__in=sorted({old_item_id, new_item.pk}))
+            .order_by("pk")
+        }
+        old_item = locked_items[old_item_id]
+        target_item = locked_items[new_item.pk]
+
+        if new_item.pk != old_item_id and not target_item.activo:
+            raise serializers.ValidationError({"item": "No se puede utilizar un material inactivo."})
+
+        available = target_item.cantidad + (usage.cantidad if target_item.pk == old_item_id else 0)
+        if new_quantity > available:
+            raise serializers.ValidationError({"cantidad": "La cantidad supera el stock disponible."})
+
+        if target_item.pk == old_item_id:
+            target_item.cantidad = available - new_quantity
+            target_item.save(update_fields=["cantidad"])
+        else:
+            old_item.cantidad += usage.cantidad
+            target_item.cantidad -= new_quantity
+            old_item.save(update_fields=["cantidad"])
+            target_item.save(update_fields=["cantidad"])
+
+        usage.visit = validated_data.get("visit", usage.visit)
+        usage.item = target_item
+        usage.cantidad = new_quantity
+        usage.save(update_fields=["visit", "item", "cantidad"])
+        return usage

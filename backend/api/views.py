@@ -1,5 +1,6 @@
 from rest_framework import generics
 from rest_framework.exceptions import APIException
+from django.db import transaction
 from django.db.models.deletion import ProtectedError
 
 from users.models import User
@@ -9,6 +10,7 @@ from specialists.models import Specialist
 from technicians.models import Technician
 from tickets.models import Ticket
 from visits.models import Visit
+from inventory.models import InventoryItem, InventoryUsage
 from .permissions import (
     IsAdmin,
     IsAdminOrClientCreate,
@@ -19,6 +21,8 @@ from .permissions import (
     IsAdminOrSelfProfile,
     IsTicketRelatedOrAdmin,
     IsAdminOrVisitParticipant,
+    IsAdminOrTechnicianInventoryReadOnly,
+    IsAdminOrTechnicianUsage,
 )
 
 from .serializers import (
@@ -29,6 +33,8 @@ from .serializers import (
     TechnicianSerializer,
     TicketSerializer,
     VisitSerializer,
+    InventoryItemSerializer,
+    InventoryUsageSerializer,
 )
 
 
@@ -193,6 +199,68 @@ class VisitDetailView(ProtectedDeleteMixin, generics.RetrieveUpdateDestroyAPIVie
 
     def get_queryset(self):
         return VisitListCreateView.get_queryset(self)
+
+
+    def perform_destroy(self, instance):
+        if instance.materials_used.exists():
+            raise ProtectedRelationConflict("No se puede eliminar una visita con materiales registrados.")
+        super().perform_destroy(instance)
+
+
+class InventoryItemListCreateView(generics.ListCreateAPIView):
+    serializer_class = InventoryItemSerializer
+    permission_classes = [IsAdminOrTechnicianInventoryReadOnly]
+
+    def get_queryset(self):
+        queryset = InventoryItem.objects.all()
+        if self.request.user.role == User.Role.TECNICO:
+            return queryset.filter(activo=True, cantidad__gt=0)
+        return queryset
+
+
+class InventoryItemDetailView(ProtectedDeleteMixin, generics.RetrieveUpdateDestroyAPIView):
+    serializer_class = InventoryItemSerializer
+    permission_classes = [IsAdminOrTechnicianInventoryReadOnly]
+
+    def get_queryset(self):
+        queryset = InventoryItem.objects.all()
+        if self.request.user.role == User.Role.TECNICO:
+            return queryset.filter(activo=True, cantidad__gt=0)
+        return queryset
+
+
+class InventoryUsageListCreateView(generics.ListCreateAPIView):
+    serializer_class = InventoryUsageSerializer
+    permission_classes = [IsAdminOrTechnicianUsage]
+
+    def get_queryset(self):
+        queryset = InventoryUsage.objects.select_related("visit__technician__user", "item")
+        if self.request.user.role == User.Role.ADMINISTRADOR:
+            return queryset
+        if self.request.user.role == User.Role.TECNICO:
+            return queryset.filter(visit__technician__user=self.request.user)
+        return InventoryUsage.objects.none()
+
+
+class InventoryUsageDetailView(generics.RetrieveUpdateDestroyAPIView):
+    serializer_class = InventoryUsageSerializer
+    permission_classes = [IsAdminOrTechnicianUsage]
+
+    def get_queryset(self):
+        queryset = InventoryUsage.objects.select_related("visit__technician__user", "item")
+        if self.request.user.role == User.Role.ADMINISTRADOR:
+            return queryset
+        if self.request.user.role == User.Role.TECNICO:
+            return queryset.filter(visit__technician__user=self.request.user)
+        return InventoryUsage.objects.none()
+
+    @transaction.atomic
+    def perform_destroy(self, instance):
+        usage = InventoryUsage.objects.select_for_update().get(pk=instance.pk)
+        item = InventoryItem.objects.select_for_update().get(pk=usage.item_id)
+        item.cantidad += usage.cantidad
+        item.save(update_fields=["cantidad"])
+        usage.delete()
 
 
 class TicketDetailView(ProtectedDeleteMixin, generics.RetrieveUpdateDestroyAPIView):

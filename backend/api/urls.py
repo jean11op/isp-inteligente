@@ -95,6 +95,28 @@ urlpatterns = [
         name="visit-detail"
     ),
 
+    # Inventario
+    path(
+        "inventory/",
+        InventoryItemListCreateView.as_view(),
+        name="inventory-list-create"
+    ),
+    path(
+        "inventory/<int:pk>/",
+        InventoryItemDetailView.as_view(),
+        name="inventory-detail"
+    ),
+    path(
+        "inventory-usage/",
+        InventoryUsageListCreateView.as_view(),
+        name="inventory-usage-list-create"
+    ),
+    path(
+        "inventory-usage/<int:pk>/",
+        InventoryUsageDetailView.as_view(),
+        name="inventory-usage-detail"
+    ),
+
     # Tickets
     path(
         "tickets/",

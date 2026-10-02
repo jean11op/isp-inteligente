@@ -86,6 +86,35 @@ class IsAdminOrVisitParticipant(BasePermission):
         )
 
 
+class IsAdminOrTechnicianInventoryReadOnly(BasePermission):
+    def has_permission(self, request, view):
+        if not request.user.is_authenticated:
+            return False
+        if request.method in SAFE_METHODS:
+            return request.user.role in {"ADMINISTRADOR", "TECNICO"}
+        return request.user.role == "ADMINISTRADOR"
+
+
+class IsAdminOrTechnicianUsage(BasePermission):
+    def has_permission(self, request, view):
+        if not request.user.is_authenticated:
+            return False
+        if request.user.role == "ADMINISTRADOR":
+            return True
+        if request.user.role == "TECNICO":
+            return request.method in SAFE_METHODS or request.method == "POST"
+        return False
+
+    def has_object_permission(self, request, view, obj):
+        if request.user.role == "ADMINISTRADOR":
+            return True
+        return (
+            request.user.role == "TECNICO"
+            and request.method in SAFE_METHODS
+            and obj.visit.technician.user == request.user
+        )
+
+
 class IsAdminOrReadOnly(BasePermission):
     """Permite lectura a cualquier usuario autenticado y escritura solo a administradores."""
 
