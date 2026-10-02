@@ -110,3 +110,147 @@ body {
 .dashboard-content {
   padding: 1.5rem;
 }
+
+a.btn {
+  display: inline-block;
+  text-decoration: none;
+}
+
+.btn-secondary {
+  background: #fff;
+  color: var(--primary);
+  border: 1px solid var(--primary);
+}
+
+.page-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+}
+
+.card-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 1rem;
+}
+
+.card {
+  padding: 1.25rem;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  text-decoration: none;
+  color: inherit;
+  font-weight: 600;
+}
+
+.card:hover {
+  border-color: var(--primary);
+}
+
+.ticket-list {
+  list-style: none;
+  margin: 1rem 0;
+  padding: 0;
+  display: grid;
+  gap: 0.75rem;
+}
+
+.ticket-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.9rem 1rem;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  text-decoration: none;
+  color: inherit;
+}
+
+.ticket-item small {
+  display: block;
+  color: #6b7280;
+}
+
+.badge {
+  padding: 0.2rem 0.6rem;
+  border-radius: 999px;
+  background: #e5e7eb;
+  font-size: 0.8rem;
+  white-space: nowrap;
+}
+
+.badge-resuelto,
+.badge-cerrado {
+  background: #dcfce7;
+  color: var(--ok);
+}
+
+.badge-no_resuelto,
+.badge-escalado {
+  background: #fee2e2;
+  color: var(--danger);
+}
+
+.detail-grid {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 0.5rem 1rem;
+}
+
+.detail-grid dt {
+  font-weight: 600;
+}
+
+.detail-grid dd {
+  margin: 0;
+}
+
+.chat {
+  max-width: 640px;
+  display: grid;
+  gap: 1rem;
+}
+
+.chat-messages {
+  display: grid;
+  gap: 0.5rem;
+}
+
+.chat-msg {
+  margin: 0;
+  max-width: 85%;
+  padding: 0.6rem 0.9rem;
+  border-radius: 12px;
+}
+
+.chat-msg-bot {
+  background: #e5e7eb;
+  justify-self: start;
+}
+
+.chat-msg-user {
+  background: var(--primary);
+  color: #fff;
+  justify-self: end;
+}
+
+.chat-form {
+  display: grid;
+  gap: 0.5rem;
+}
+
+.chat-form textarea {
+  padding: 0.6rem 0.75rem;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  font: inherit;
+  resize: vertical;
+}
+
+.chat-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
