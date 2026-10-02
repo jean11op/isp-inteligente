@@ -4,6 +4,7 @@ from rest_framework import status
 from rest_framework.test import APITestCase
 
 from clients.models import Client
+from services.models import Service
 from specialists.models import Specialist
 from technicians.models import Technician
 from tickets.models import Ticket
@@ -47,6 +48,14 @@ class AuthAndPermissionTests(APITestCase):
             documento="22222222",
             telefono="987654321",
         )
+        self.service = Service.objects.create(
+            nombre="Fibra hogar",
+            descripcion="Servicio de prueba",
+            velocidad_mbps=100,
+            precio_mensual="25.00",
+        )
+        self.client_profile.service = self.service
+        self.client_profile.save(update_fields=["service"])
 
         self.ticket = Ticket.objects.create(
             client=self.client_profile,
@@ -152,7 +161,8 @@ class AuthAndPermissionTests(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
 
     def test_user_password_is_hashed_on_update(self):
-        payload = {"password": "NewPass123"}
+        password = "S3cure-Unique-Update-846!"
+        payload = {"password": password}
         response = self.client.patch(
             reverse("user-detail", args=[self.client_user.pk]),
             payload,
@@ -162,8 +172,177 @@ class AuthAndPermissionTests(APITestCase):
 
         self.client_user.refresh_from_db()
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertTrue(self.client_user.check_password("NewPass123"))
+        self.assertTrue(self.client_user.check_password(password))
         self.assertNotIn("password", response.data)
+
+    def test_user_creation_validates_and_hashes_password(self):
+        self.client.force_authenticate(user=self.admin)
+        password = "S3cure-Unique-Create-947!"
+        response = self.client.post(
+            reverse("user-list-create"),
+            {
+                "username": "newclient",
+                "email": "newclient@example.com",
+                "password": password,
+                "role": User.Role.CLIENTE,
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        created_user = User.objects.get(username="newclient")
+        self.assertTrue(created_user.check_password(password))
+        self.assertNotIn("password", response.data)
+
+    def test_user_creation_rejects_weak_password(self):
+        self.client.force_authenticate(user=self.admin)
+        response = self.client.post(
+            reverse("user-list-create"),
+            {
+                "username": "weakpassclient",
+                "email": "weakpass@example.com",
+                "password": "123",
+                "role": User.Role.CLIENTE,
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("password", response.data)
+
+    def test_user_password_update_rejects_weak_password(self):
+        self.client.force_authenticate(user=self.client_user)
+        response = self.client.patch(
+            reverse("user-detail", args=[self.client_user.pk]),
+            {"password": "123"},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("password", response.data)
+
+    def test_admin_can_create_client_with_client_user(self):
+        self.client.force_authenticate(user=self.admin)
+        user = User.objects.create_user(
+            username="newprofileclient",
+            password="Password123",
+            role=User.Role.CLIENTE,
+        )
+        response = self.client.post(
+            reverse("client-list-create"),
+            {
+                "user": user.pk,
+                "nombres": "Nuevo",
+                "apellidos": "Cliente",
+                "documento": "33333333",
+                "telefono": "555555555",
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        created_client = Client.objects.get(user=user)
+        self.assertEqual(created_client.documento, "33333333")
+
+    def test_admin_cannot_create_client_without_user(self):
+        self.client.force_authenticate(user=self.admin)
+        response = self.client.post(
+            reverse("client-list-create"),
+            {
+                "nombres": "Sin",
+                "apellidos": "Usuario",
+                "documento": "44444444",
+                "telefono": "555555556",
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertFalse(Client.objects.filter(documento="44444444").exists())
+
+    def test_admin_cannot_create_second_client_for_same_user(self):
+        self.client.force_authenticate(user=self.admin)
+        response = self.client.post(
+            reverse("client-list-create"),
+            {
+                "user": self.client_user.pk,
+                "nombres": "Duplicado",
+                "apellidos": "Cliente",
+                "documento": "55555555",
+                "telefono": "555555557",
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertFalse(Client.objects.filter(documento="55555555").exists())
+
+    def test_client_can_create_ticket_for_own_profile(self):
+        self.client.force_authenticate(user=self.client_user)
+        response = self.client.post(
+            reverse("ticket-list-create"),
+            {
+                "titulo": "Conexión intermitente",
+                "descripcion": "La conexión se interrumpe varias veces al día.",
+                "prioridad": Ticket.Priority.ALTA,
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        created_ticket = Ticket.objects.get(pk=response.data["id"])
+        self.assertEqual(created_ticket.client, self.client_profile)
+        self.assertEqual(created_ticket.service, self.service)
+        self.assertEqual(created_ticket.estado, Ticket.Status.NUEVO)
+
+    def test_client_cannot_set_internal_ticket_fields_on_create(self):
+        self.client.force_authenticate(user=self.client_user)
+        internal_fields = {
+            "client": self.other_client_profile.pk,
+            "service": self.service.pk,
+            "estado": Ticket.Status.RESUELTO,
+            "diagnostico": "Diagnóstico manipulado",
+            "solucion": "Solución manipulada",
+            "specialist": self.specialist.pk,
+            "technician": self.technician.pk,
+        }
+
+        for field, value in internal_fields.items():
+            with self.subTest(field=field):
+                response = self.client.post(
+                    reverse("ticket-list-create"),
+                    {
+                        "titulo": "Solicitud",
+                        "descripcion": "Reporte de prueba",
+                        field: value,
+                    },
+                    format="json",
+                )
+                self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+                self.assertIn(field, response.data)
+
+    def test_client_without_profile_gets_validation_error_creating_ticket(self):
+        user_without_profile = User.objects.create_user(
+            username="clientwithoutprofile",
+            password="Password123",
+            role=User.Role.CLIENTE,
+        )
+        self.client.force_authenticate(user=user_without_profile)
+        response = self.client.post(
+            reverse("ticket-list-create"),
+            {"titulo": "Sin perfil", "descripcion": "Prueba", "prioridad": Ticket.Priority.MEDIA},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("client", response.data)
+
+    def test_delete_protected_client_returns_conflict(self):
+        self.client.force_authenticate(user=self.admin)
+        response = self.client.delete(reverse("client-detail", args=[self.client_profile.pk]))
+
+        self.assertEqual(response.status_code, status.HTTP_409_CONFLICT)
+        self.assertTrue(Client.objects.filter(pk=self.client_profile.pk).exists())
 
     def test_client_cannot_change_its_role_to_admin(self):
         self.client.force_authenticate(user=self.client_user)

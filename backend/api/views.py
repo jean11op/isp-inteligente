@@ -1,4 +1,6 @@
 from rest_framework import generics
+from rest_framework.exceptions import APIException
+from django.db.models.deletion import ProtectedError
 
 from users.models import User
 from clients.models import Client
@@ -19,6 +21,20 @@ from .serializers import (
     ServiceSerializer,
     TicketSerializer,
 )
+
+
+class ProtectedRelationConflict(APIException):
+    status_code = 409
+    default_detail = "No se puede eliminar el recurso porque tiene registros relacionados."
+    default_code = "protected_relation"
+
+
+class ProtectedDeleteMixin:
+    def perform_destroy(self, instance):
+        try:
+            instance.delete()
+        except ProtectedError as error:
+            raise ProtectedRelationConflict() from error
 
 
 class UserListCreateView(generics.ListCreateAPIView):
@@ -73,7 +89,7 @@ class TicketListCreateView(generics.ListCreateAPIView):
         serializer.save()
 
 
-class UserDetailView(generics.RetrieveUpdateDestroyAPIView):
+class UserDetailView(ProtectedDeleteMixin, generics.RetrieveUpdateDestroyAPIView):
     """Usuario: cada usuario ve su propio perfil y los administradores todo."""
 
     serializer_class = UserSerializer
@@ -85,7 +101,7 @@ class UserDetailView(generics.RetrieveUpdateDestroyAPIView):
         return User.objects.filter(pk=self.request.user.pk)
 
 
-class ClientDetailView(generics.RetrieveUpdateDestroyAPIView):
+class ClientDetailView(ProtectedDeleteMixin, generics.RetrieveUpdateDestroyAPIView):
     """Cliente: el dueño del cliente o el administrador pueden acceder."""
 
     queryset = Client.objects.all()
@@ -98,7 +114,7 @@ class ClientDetailView(generics.RetrieveUpdateDestroyAPIView):
         return Client.objects.filter(user=self.request.user)
 
 
-class ServiceDetailView(generics.RetrieveUpdateDestroyAPIView):
+class ServiceDetailView(ProtectedDeleteMixin, generics.RetrieveUpdateDestroyAPIView):
     """Servicio: lectura autenticada y escritura solo por administradores."""
 
     queryset = Service.objects.all()
@@ -106,7 +122,7 @@ class ServiceDetailView(generics.RetrieveUpdateDestroyAPIView):
     permission_classes = [IsAdminOrReadOnly]
 
 
-class TicketDetailView(generics.RetrieveUpdateDestroyAPIView):
+class TicketDetailView(ProtectedDeleteMixin, generics.RetrieveUpdateDestroyAPIView):
     """Ticket: lectura permitida solo a usuarios relacionados o administradores; escritura solo admin."""
 
     serializer_class = TicketSerializer
