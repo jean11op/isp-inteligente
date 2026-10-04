@@ -1,3 +1,14 @@
+import EmptyState from "@/components/ui/EmptyState";
+import PageHeader from "@/components/ui/PageHeader";
+
 export default function TechnicianDashboardPage() {
-  return <h2>Panel del técnico</h2>;
+  return (
+    <>
+      <PageHeader eyebrow="Técnico" title="Servicios asignados" />
+      <EmptyState
+        title="Esta bandeja está en construcción"
+        description="Aquí verás tus visitas, la ubicación del cliente y la ruta."
+      />
+    </>
+  );
 }

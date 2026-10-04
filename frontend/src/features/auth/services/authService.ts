@@ -3,7 +3,6 @@ import { apiClient } from "../../../services/apiClient";
 import type { User } from "../../../types/user";
 import type { LoginCredentials, RegisterData } from "../types";
 
-// TEMPORAL: cuentas de prueba mientras el backend no tenga endpoint de login.
 const MOCK_PASSWORD = "123456";
 const MOCK_USERS: Record<string, User> = {
   cliente: { id: 1, username: "cliente", email: "cliente@demo.com", role: "CLIENTE", clientId: env.mockClientId },
@@ -20,11 +19,9 @@ export async function login({ username, password }: LoginCredentials): Promise<U
     }
     return user;
   }
-  throw new Error("El backend todavía no tiene endpoint de login");
+  throw new Error("El login real todavía no está conectado");
 }
 
-// CU-01: crea la cuenta (User) y luego el perfil de cliente (Client).
-// No se envía "role": el backend asigna CLIENTE por defecto.
 export async function register(data: RegisterData): Promise<void> {
   if (env.useMockAuth) return;
 

@@ -1,4 +1,4 @@
-import type { Role } from "../types/roles";
+import type { Role } from "@/types/roles";
 
 export const PATHS = {
   home: "/",
@@ -14,6 +14,10 @@ export const PATHS = {
 
 export function clientTicketPath(id: number): string {
   return `${PATHS.clientTickets}/${id}`;
+}
+
+export function specialistTicketPath(id: number): string {
+  return `${PATHS.specialist}/${id}`;
 }
 
 export const ROLE_HOME: Record<Role, string> = {

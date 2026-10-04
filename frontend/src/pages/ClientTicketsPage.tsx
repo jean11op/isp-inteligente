@@ -1,20 +1,20 @@
 import { Link } from "react-router";
-import TicketList from "../features/tickets/components/TicketList";
-import { PATHS } from "../routes/paths";
+import PageHeader from "@/components/ui/PageHeader";
+import TicketList from "@/features/tickets/components/TicketList";
+import { PATHS } from "@/routes/paths";
 
 export default function ClientTicketsPage() {
   return (
     <>
-      <div className="page-header">
-        <h2>Mis tickets</h2>
-        <Link className="btn" to={PATHS.clientNewTicket}>
-          Reportar incidencia
-        </Link>
-      </div>
+      <PageHeader
+        title="Mis tickets"
+        actions={
+          <Link className="btn" to={PATHS.clientNewTicket}>
+            Reportar incidencia
+          </Link>
+        }
+      />
       <TicketList />
-      <p>
-        <Link to={PATHS.client}>← Volver al panel</Link>
-      </p>
     </>
   );
 }

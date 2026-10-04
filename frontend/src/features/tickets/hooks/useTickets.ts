@@ -10,8 +10,6 @@ export interface NewTicketInput {
   prioridad: TicketPriority;
 }
 
-// CU-05: tickets del cliente autenticado (el filtro es local porque
-// la API todavía no permite filtrar por cliente).
 export function useMyTickets() {
   const { user } = useAuth();
 
@@ -49,7 +47,6 @@ export function useTicket(id: number) {
   });
 }
 
-// CU-03: crea el ticket a nombre del cliente autenticado.
 export function useCreateTicket() {
   const { user } = useAuth();
   const queryClient = useQueryClient();

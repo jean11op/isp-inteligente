@@ -1,7 +1,7 @@
 import { Navigate } from "react-router";
-import LoginForm from "../components/LoginForm";
-import { useAuth } from "../features/auth/useAuth";
-import { ROLE_HOME } from "../routes/paths";
+import LoginForm from "@/features/auth/components/LoginForm";
+import { useAuth } from "@/features/auth/useAuth";
+import { ROLE_HOME } from "@/routes/paths";
 
 export default function LoginPage() {
   const { user } = useAuth();
@@ -10,7 +10,7 @@ export default function LoginPage() {
 
   return (
     <>
-      <h2>Iniciar sesión</h2>
+      <h1>Iniciar sesión</h1>
       <LoginForm />
     </>
   );

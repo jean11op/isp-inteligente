@@ -117,6 +117,7 @@ export default function ChatbotReport() {
       {(step === "titulo" || step === "descripcion") && (
         <form className="chat-form" onSubmit={handleSubmit}>
           <textarea
+            aria-label="Tu mensaje"
             value={input}
             onChange={(event) => setInput(event.target.value)}
             rows={2}
