@@ -1,0 +1,61 @@
+:root {
+  --paper: #f6f3ec;
+  --surface: #fdfcf8;
+  --sunken: #ece8dd;
+  --ink: #17150f;
+  --ink-2: #4a463c;
+  --ink-3: #6b665a;
+  --line: #ddd7c8;
+  --line-strong: #bfb8a5;
+
+  --accent: #c2410c;
+  --accent-hover: #9a3412;
+  --accent-soft: #fbe6d8;
+  --on-accent: #ffffff;
+
+  --info: #2c5a85;
+  --info-soft: #e1ebf4;
+  --ok: #2d6a3e;
+  --ok-soft: #e0eee3;
+  --warn: #7f5200;
+  --warn-soft: #f6ebcf;
+  --danger: #a12626;
+  --danger-soft: #f6dcdc;
+
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-5: 1.5rem;
+  --space-6: 2rem;
+  --space-7: 3rem;
+  --space-8: 4rem;
+
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 10px;
+  --radius-pill: 999px;
+
+  --font-sans: "Instrument Sans Variable", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-mono: "JetBrains Mono Variable", ui-monospace, "Cascadia Code", Consolas, monospace;
+  --text-xs: 0.75rem;
+  --text-sm: 0.875rem;
+  --text-base: 1rem;
+  --text-lg: 1.125rem;
+  --text-xl: 1.375rem;
+  --text-2xl: 1.75rem;
+  --text-3xl: 2.25rem;
+  --leading-tight: 1.2;
+  --leading-body: 1.5;
+
+  --tap: 2.75rem;
+  --header-h: 3.5rem;
+  --nav-h: 3.5rem;
+  --sidebar-w: 15rem;
+
+  --ease-out: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --dur-fast: 120ms;
+  --dur-base: 200ms;
+
+  --shadow-pop: 0 8px 24px rgb(23 21 15 / 12%);
+}
