@@ -1,0 +1,176 @@
+{
+  "name": "technician-nearby",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "technician-nearby",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        -560,
+        -32
+      ],
+      "id": "4e63bf6b-baac-4ef0-976c-f0e1b0870295",
+      "name": "Webhook",
+      "webhookId": "35922c10-3d68-4954-9f88-556097897994"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "073a2df2-1b06-4b1f-bb1b-498729a44040",
+              "name": "evento",
+              "value": "technician_nearby",
+              "type": "string"
+            },
+            {
+              "id": "db79347d-6086-4816-951f-efd9329d5320",
+              "name": "mensaje",
+              "value": "=Técnico {{ $json.body.tecnico }} llega en ~{{ $json.body.minutos }} min (ticket {{ $json.body.ticket_id }})",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.5,
+      "position": [
+        -96,
+        -176
+      ],
+      "id": "6fe89661-7d8e-4bba-b527-659b30ba43cb",
+      "name": "Edit Fields"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        80,
+        -176
+      ],
+      "id": "efffdc45-26ee-439d-acf7-dd920c14ffdc",
+      "name": "Respond to Webhook"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "1f4c9dea-20c0-448c-abf2-6f48b87ae48b",
+              "leftValue": "={{ $json.body.minutos }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "looseTypeValidation": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        -336,
+        -160
+      ],
+      "id": "5c7dc3b7-8752-4687-a713-ff988e5246bb",
+      "name": "If"
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "{\n  \"ok\": false,\n  \"error\": \"minutos requerido\"\n}",
+        "options": {
+          "responseCode": 400
+        }
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        -304,
+        128
+      ],
+      "id": "54933a3b-0530-4f16-a0ad-d1ef96cbd625",
+      "name": "Respond to Webhook1"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "If",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Respond to Webhook1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "timeSavedMode": "fixed",
+    "errorWorkflow": "YvOgrBljkkgmR7cC",
+    "callerPolicy": "workflowsFromSameOwner",
+    "availableInMCP": false
+  },
+  "versionId": "c074b4c0-ff18-42da-b0ff-3098330cc707",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "539bfee859c6f54f637a0610499282b123ebe260a8c25ddf80a4600c1fc26c27"
+  },
+  "nodeGroups": [],
+  "id": "qBWOky6tcZMiH4U4",
+  "tags": []
+}

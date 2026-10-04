@@ -1,0 +1,198 @@
+{
+  "name": "ticket-escalation",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "ticket-escalation",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        -720,
+        -48
+      ],
+      "id": "53c9835c-28ce-4731-b0a2-93d99b469ef4",
+      "name": "Webhook",
+      "webhookId": "de76e382-02bc-4afd-9646-6078c8b3df47"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "073a2df2-1b06-4b1f-bb1b-498729a44040",
+              "name": "evento",
+              "value": "ticket_escalation",
+              "type": "string"
+            },
+            {
+              "id": "db79347d-6086-4816-951f-efd9329d5320",
+              "name": "mensaje",
+              "value": "=URGENTE nivel {{ $json.body.nivel }}: ticket #{{ $json.body.ticket_id }} ({{ $json.body.prioridad }})\nCliente: {{ $json.body.cliente }}. Motivo: {{ $json.body.motivo }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.5,
+      "position": [
+        -240,
+        -208
+      ],
+      "id": "8d5cf8c4-5c82-4875-8645-2e207646dcb1",
+      "name": "Edit Fields"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        0,
+        -32
+      ],
+      "id": "36986b15-325f-408f-871e-d96eeb88bcf0",
+      "name": "Respond to Webhook"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "ceadb935-b5f9-4557-a4c1-761ac788ae8e",
+              "leftValue": "={{ $json.body.nivel }}",
+              "rightValue": 2,
+              "operator": {
+                "type": "number",
+                "operation": "gte"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "looseTypeValidation": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        -512,
+        -48
+      ],
+      "id": "638a15bf-e709-44b2-9e7b-b89a817dfc34",
+      "name": "If"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "073a2df2-1b06-4b1f-bb1b-498729a44040",
+              "name": "evento",
+              "value": "ticket_escalation",
+              "type": "string"
+            },
+            {
+              "id": "db79347d-6086-4816-951f-efd9329d5320",
+              "name": "mensaje",
+              "value": "=ESCALAMIENTO nivel {{ $json.body.nivel }}: ticket #{{ $json.body.ticket_id }} ({{ $json.body.prioridad }})\nCliente: {{ $json.body.cliente }}. Motivo: {{ $json.body.motivo }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.5,
+      "position": [
+        -240,
+        80
+      ],
+      "id": "4f38d996-2ead-4330-aea4-5b4b7e89dc2b",
+      "name": "Edit Fields1"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "If",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Edit Fields1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields1": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "timeSavedMode": "fixed",
+    "errorWorkflow": "YvOgrBljkkgmR7cC",
+    "callerPolicy": "workflowsFromSameOwner",
+    "availableInMCP": false
+  },
+  "versionId": "9ee42d54-27b9-48aa-a9e9-b8bf0d99b333",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "539bfee859c6f54f637a0610499282b123ebe260a8c25ddf80a4600c1fc26c27"
+  },
+  "nodeGroups": [],
+  "id": "3kBaHyuKm5ElJOyk",
+  "tags": []
+}

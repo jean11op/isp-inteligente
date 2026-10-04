@@ -16,6 +16,8 @@ import type { Role } from "../types/roles";
 import { PATHS } from "./paths";
 import RoleRoute from "./RoleRoute";
 
+// Cada rol tiene su prefijo (/cliente, /tecnico...) y solo ese rol puede entrar.
+// "pages" son las rutas hijas de ese rol, relativas a su prefijo.
 function dashboardRoute(
   path: string,
   role: Role,

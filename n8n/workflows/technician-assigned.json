@@ -1,0 +1,106 @@
+{
+  "name": "technician-assigned",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "technician-assigned",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        -368,
+        -32
+      ],
+      "id": "381ead4a-3dfe-4051-8fa5-e65e4b3fd85c",
+      "name": "Webhook",
+      "webhookId": "fe948617-85ff-4338-b453-ec2c30b19da8"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "152a6f5d-2c6b-48e2-bdb3-e90531aa86c8",
+              "name": "evento",
+              "value": "technician_assigned",
+              "type": "string"
+            },
+            {
+              "id": "db79347d-6086-4816-951f-efd9329d5320",
+              "name": "mensaje",
+              "value": "=Ticket #{{ $json.body.ticket_id }} asignado a {{ $json.body.tecnico }} para {{ $json.body.cliente }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.5,
+      "position": [
+        -144,
+        -32
+      ],
+      "id": "83ebe1dd-0a3f-4e12-bbd3-20b5e0a511c9",
+      "name": "Edit Fields"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        80,
+        -32
+      ],
+      "id": "b9199d8e-edc8-4b94-b1cc-50465047f05d",
+      "name": "Respond to Webhook"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "timeSavedMode": "fixed",
+    "errorWorkflow": "YvOgrBljkkgmR7cC",
+    "callerPolicy": "workflowsFromSameOwner",
+    "availableInMCP": false
+  },
+  "versionId": "b96793d0-1e30-4eed-875c-679c85cea330",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "539bfee859c6f54f637a0610499282b123ebe260a8c25ddf80a4600c1fc26c27"
+  },
+  "nodeGroups": [],
+  "id": "O5j350xfbcZR589A",
+  "tags": []
+}
