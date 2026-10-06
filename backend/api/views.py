@@ -1,6 +1,7 @@
 from rest_framework import generics
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
+from rest_framework.views import APIView
 from rest_framework import status
 from rest_framework.exceptions import APIException
 from django.db import transaction
@@ -150,6 +151,14 @@ class AddressListCreateView(generics.ListCreateAPIView):
             return queryset
         return queryset.filter(client__user=self.request.user)
 
+    def perform_create(self, serializer):
+        if self.request.user.role == User.Role.ADMINISTRADOR:
+            serializer.save()
+            return
+
+        client = Client.objects.get(user=self.request.user)
+        serializer.save(client=client)
+
 
 class AddressDetailView(ProtectedDeleteMixin, generics.RetrieveUpdateDestroyAPIView):
     serializer_class = AddressSerializer
@@ -187,9 +196,16 @@ class SpecialistDetailView(ProtectedDeleteMixin, generics.RetrieveUpdateDestroyA
 
 
 class TechnicianListCreateView(generics.ListCreateAPIView):
-    queryset = Technician.objects.select_related("user").all()
     serializer_class = TechnicianSerializer
-    permission_classes = [IsAdmin]
+    permission_classes = [IsAdminOrOwnTechnicianProfile]
+
+    def get_queryset(self):
+        if self.request.user.role == User.Role.ADMINISTRADOR:
+            return Technician.objects.select_related("user").all()
+
+        return Technician.objects.filter(
+            user=self.request.user
+        ).select_related("user")
 
 
 class TechnicianDetailView(ProtectedDeleteMixin, generics.RetrieveUpdateDestroyAPIView):
@@ -424,3 +440,28 @@ class TicketRequestSpecialistView(generics.GenericAPIView):
             estado_nuevo=ticket.estado,
         )
         return Response(TicketSerializer(ticket, context={"request": request}).data)
+
+class MeView(APIView):
+    """Datos del usuario autenticado, con su nombre real y su perfil de cliente."""
+
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        user = request.user
+        client = Client.objects.filter(user=user).first()
+        full_name = (
+            f"{client.nombres} {client.apellidos}".strip()
+            if client
+            else user.get_full_name().strip()
+        ) or user.username
+
+        return Response(
+            {
+                "id": user.id,
+                "username": user.username,
+                "email": user.email,
+                "role": user.role,
+                "full_name": full_name,
+                "client_id": client.id if client else None,
+            }
+        )

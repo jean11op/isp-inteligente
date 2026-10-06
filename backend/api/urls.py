@@ -31,6 +31,7 @@ from .views import (
     TicketListCreateView,
     TicketDetailView,
     TicketRequestSpecialistView,
+    MeView,
 )
 
 
@@ -178,8 +179,12 @@ urlpatterns = [
         name="ticket-request-specialist",
     ),
     
-    #AUTENTICACION 
-    
+    # AUTENTICACION
+    path(
+        "auth/me/",
+        MeView.as_view(),
+        name="auth-me",
+    ),
     path(
         "auth/token/",
         TokenObtainPairView.as_view(),
