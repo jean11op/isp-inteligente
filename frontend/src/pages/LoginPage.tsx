@@ -10,7 +10,10 @@ export default function LoginPage() {
 
   return (
     <>
-      <h1>Iniciar sesión</h1>
+      <header className="auth-head">
+        <h1>Iniciar sesión</h1>
+        <p className="muted">Ingresa para reportar incidencias y seguir su estado.</p>
+      </header>
       <LoginForm />
     </>
   );
