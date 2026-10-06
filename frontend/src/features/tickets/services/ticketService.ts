@@ -19,3 +19,5 @@ export async function getTicket(id: number): Promise<Ticket> {
 
 export const createTicket = (payload: CreateTicketData) => createResource<Ticket>("/tickets/", payload);
 export const updateTicket = (id: number, patch: TicketPatch) => patchResource<Ticket>(`/tickets/${id}/`, patch);
+export const requestSpecialist = (id: number) =>
+  apiClient.post<Ticket>(`/tickets/${id}/request-specialist/`).then(({ data }) => data);

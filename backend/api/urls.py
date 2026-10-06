@@ -10,6 +10,8 @@ from .views import (
     UserDetailView,
     ClientListCreateView,
     ClientDetailView,
+    AddressListCreateView,
+    AddressDetailView,
     ServiceListCreateView,
     ServiceDetailView,
     SpecialistListCreateView,
@@ -28,6 +30,7 @@ from .views import (
     TicketHistoryDetailView,
     TicketListCreateView,
     TicketDetailView,
+    TicketRequestSpecialistView,
 )
 
 
@@ -58,6 +61,9 @@ urlpatterns = [
         ClientDetailView.as_view(),
         name="client-detail"
     ),
+
+    path("addresses/", AddressListCreateView.as_view(), name="address-list-create"),
+    path("addresses/<int:pk>/", AddressDetailView.as_view(), name="address-detail"),
 
     # Servicios
     path(
@@ -165,6 +171,11 @@ urlpatterns = [
         "tickets/<int:pk>/",
         TicketDetailView.as_view(),
         name="ticket-detail"
+    ),
+    path(
+        "tickets/<int:pk>/request-specialist/",
+        TicketRequestSpecialistView.as_view(),
+        name="ticket-request-specialist",
     ),
     
     #AUTENTICACION 

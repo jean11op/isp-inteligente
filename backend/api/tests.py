@@ -3,7 +3,7 @@ from django.urls import reverse
 from rest_framework import status
 from rest_framework.test import APITestCase
 
-from clients.models import Client
+from clients.models import Address, Client
 from services.models import Service
 from specialists.models import Specialist
 from technicians.models import Technician
@@ -391,6 +391,78 @@ class AuthAndPermissionTests(APITestCase):
         )
 
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_client_can_confirm_resolved_ticket(self):
+        self.ticket.estado = Ticket.Status.RESUELTO
+        self.ticket.save(update_fields=["estado"])
+        self.client.force_authenticate(user=self.client_user)
+
+        response = self.client.patch(
+            reverse("ticket-detail", args=[self.ticket.pk]),
+            {"estado": Ticket.Status.CERRADO},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.ticket.refresh_from_db()
+        self.assertEqual(self.ticket.estado, Ticket.Status.CERRADO)
+
+    def test_client_cannot_confirm_unresolved_ticket(self):
+        self.client.force_authenticate(user=self.client_user)
+
+        response = self.client.patch(
+            reverse("ticket-detail", args=[self.ticket.pk]),
+            {"estado": Ticket.Status.CERRADO},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.ticket.refresh_from_db()
+        self.assertEqual(self.ticket.estado, Ticket.Status.NUEVO)
+
+    def test_assigned_staff_receive_read_only_client_info(self):
+        self.client.force_authenticate(user=self.specialist_user)
+
+        response = self.client.get(reverse("ticket-detail", args=[self.ticket.pk]))
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data["client_info"]["nombres"], "Cliente")
+        self.assertEqual(response.data["client_info"]["telefono"], "123456789")
+
+    def test_client_can_create_and_list_own_address(self):
+        self.client.force_authenticate(user=self.client_user)
+        payload = {
+            "direccion": "Calle 1 # 2-3",
+            "referencia": "Frente al parque",
+            "latitud": "4.711000",
+            "longitud": "-74.072000",
+            "principal": True,
+        }
+
+        create_response = self.client.post(
+            reverse("address-list-create"), payload, format="json"
+        )
+        list_response = self.client.get(reverse("address-list-create"))
+
+        self.assertEqual(create_response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(list_response.status_code, status.HTTP_200_OK)
+        self.assertEqual(list_response.data[0]["direccion"], payload["direccion"])
+        self.assertEqual(Address.objects.get().client, self.client_profile)
+
+    def test_client_can_request_specialist(self):
+        self.client.force_authenticate(user=self.client_user)
+
+        response = self.client.post(
+            reverse("ticket-request-specialist", args=[self.ticket.pk]),
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.ticket.refresh_from_db()
+        self.assertEqual(
+            self.ticket.estado,
+            Ticket.Status.ESPERANDO_ESPECIALISTA,
+        )
 
     def test_technician_can_advance_assigned_ticket(self):
         self.ticket.estado = Ticket.Status.EN_CAMINO

@@ -2,7 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { queryKeys } from "@/services/queryKeys";
 import type { TicketPatch, TicketPriority } from "@/types/ticket";
 import { useAuth } from "../../auth/useAuth";
-import { createTicket, getTicket, getTickets, updateTicket } from "../services/ticketService";
+import { createTicket, getTicket, getTickets, requestSpecialist, updateTicket } from "../services/ticketService";
 
 export interface NewTicketInput {
   titulo: string;
@@ -45,6 +45,18 @@ export function useUpdateTicket(id: number) {
     mutationFn: (patch: TicketPatch) => updateTicket(id, patch),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: queryKeys.tickets });
+      void queryClient.invalidateQueries({ queryKey: queryKeys.history });
+    },
+  });
+}
+
+export function useRequestSpecialist(id: number) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: () => requestSpecialist(id),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: queryKeys.tickets });
+      void queryClient.invalidateQueries({ queryKey: queryKeys.ticket(id) });
       void queryClient.invalidateQueries({ queryKey: queryKeys.history });
     },
   });

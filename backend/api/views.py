@@ -1,12 +1,14 @@
 from rest_framework import generics
 from rest_framework.permissions import IsAuthenticated
+from rest_framework.response import Response
+from rest_framework import status
 from rest_framework.exceptions import APIException
 from django.db import transaction
 from django.db.models import Q
 from django.db.models.deletion import ProtectedError
 
 from users.models import User
-from clients.models import Client
+from clients.models import Address, Client
 from services.models import Service
 from specialists.models import Specialist
 from technicians.models import Technician
@@ -22,6 +24,7 @@ from .permissions import (
     IsAdminOrOwnSpecialistProfile,
     IsAdminOrOwnTechnicianProfile,
     IsAdminOrSelfClient,
+    IsAdminOrOwnAddress,
     IsAdminOrSelfProfile,
     IsTicketRelatedOrAdmin,
     IsAdminOrVisitParticipant,
@@ -42,6 +45,7 @@ from .serializers import (
     InventoryUsageSerializer,
     EvaluationSerializer,
     TicketHistorySerializer,
+    AddressSerializer,
 )
 
 
@@ -134,6 +138,28 @@ class ClientDetailView(ProtectedDeleteMixin, generics.RetrieveUpdateDestroyAPIVi
         if self.request.user.role == "ADMINISTRADOR":
             return Client.objects.all()
         return Client.objects.filter(user=self.request.user)
+
+
+class AddressListCreateView(generics.ListCreateAPIView):
+    serializer_class = AddressSerializer
+    permission_classes = [IsAdminOrOwnAddress]
+
+    def get_queryset(self):
+        queryset = Address.objects.select_related("client__user").all()
+        if self.request.user.role == User.Role.ADMINISTRADOR:
+            return queryset
+        return queryset.filter(client__user=self.request.user)
+
+
+class AddressDetailView(ProtectedDeleteMixin, generics.RetrieveUpdateDestroyAPIView):
+    serializer_class = AddressSerializer
+    permission_classes = [IsAdminOrOwnAddress]
+
+    def get_queryset(self):
+        queryset = Address.objects.select_related("client__user").all()
+        if self.request.user.role == User.Role.ADMINISTRADOR:
+            return queryset
+        return queryset.filter(client__user=self.request.user)
 
 
 class ServiceDetailView(ProtectedDeleteMixin, generics.RetrieveUpdateDestroyAPIView):
@@ -362,3 +388,39 @@ class TicketDetailView(ProtectedDeleteMixin, generics.RetrieveUpdateDestroyAPIVi
                 "No se puede eliminar un ticket con materiales registrados en sus visitas."
             )
         super().perform_destroy(instance)
+
+
+class TicketRequestSpecialistView(generics.GenericAPIView):
+    """Acción explícita para que el cliente solicite atención especializada."""
+
+    permission_classes = [IsAuthenticated]
+
+    @transaction.atomic
+    def post(self, request, pk):
+        ticket = Ticket.objects.filter(
+            pk=pk,
+            client__user=request.user,
+        ).select_for_update().first()
+        if request.user.role != User.Role.CLIENTE or ticket is None:
+            return Response(
+                {"detail": "No puedes solicitar especialista para este ticket."},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+        if ticket.estado not in {
+            Ticket.Status.NUEVO,
+            Ticket.Status.EN_REVISION,
+        }:
+            return Response(
+                {"detail": "El ticket ya no está en una etapa válida para solicitar especialista."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        previous_status = ticket.estado
+        ticket.estado = Ticket.Status.ESPERANDO_ESPECIALISTA
+        ticket.save(update_fields=["estado", "fecha_actualizacion"])
+        TicketHistory.objects.create(
+            ticket=ticket,
+            user=request.user,
+            estado_anterior=previous_status,
+            estado_nuevo=ticket.estado,
+        )
+        return Response(TicketSerializer(ticket, context={"request": request}).data)

@@ -5,7 +5,7 @@ from rest_framework import serializers
 from rest_framework.exceptions import PermissionDenied
 
 from users.models import User
-from clients.models import Client
+from clients.models import Address, Client
 from services.models import Service
 from specialists.models import Specialist
 from technicians.models import Technician
@@ -117,6 +117,80 @@ class ClientSerializer(serializers.ModelSerializer):
         return attrs
 
 
+class AddressSerializer(serializers.ModelSerializer):
+    """Domicilios que solo puede administrar su cliente propietario."""
+
+    client = serializers.PrimaryKeyRelatedField(
+        queryset=Client.objects.all(),
+        required=False,
+    )
+
+    class Meta:
+        model = Address
+        fields = [
+            "id",
+            "client",
+            "direccion",
+            "referencia",
+            "latitud",
+            "longitud",
+            "principal",
+            "fecha_registro",
+        ]
+        read_only_fields = ["id", "fecha_registro"]
+
+    def validate(self, attrs):
+        request = self.context.get("request")
+        if not request or not request.user.is_authenticated:
+            return attrs
+
+        client = Client.objects.filter(user=request.user).first()
+        requested_client = attrs.get("client", getattr(self.instance, "client", None))
+        if request.user.role == User.Role.CLIENTE:
+            if client is None:
+                raise serializers.ValidationError(
+                    {"client": "El usuario no tiene un perfil de cliente asociado."}
+                )
+            if requested_client is not None and requested_client != client:
+                raise serializers.ValidationError(
+                    {"client": "No puedes administrar el domicilio de otro cliente."}
+                )
+        elif requested_client is None:
+            raise serializers.ValidationError(
+                {"client": "El domicilio debe estar asociado a un cliente."}
+            )
+        return attrs
+
+    def create(self, validated_data):
+        request = self.context.get("request")
+        if request and request.user.role == User.Role.CLIENTE:
+            validated_data["client"] = Client.objects.get(user=request.user)
+        return super().create(validated_data)
+
+
+class ClientInfoSerializer(serializers.ModelSerializer):
+    """Información del cliente visible para los responsables de un ticket."""
+
+    class Meta:
+        model = Client
+        fields = ["nombres", "apellidos", "telefono", "addresses"]
+        read_only_fields = fields
+
+    addresses = serializers.SerializerMethodField()
+
+    def get_addresses(self, obj):
+        return [
+            {
+                "direccion": address.direccion,
+                "referencia": address.referencia,
+                "latitud": address.latitud,
+                "longitud": address.longitud,
+                "principal": address.principal,
+            }
+            for address in obj.addresses.all()
+        ]
+
+
 class ServiceSerializer(serializers.ModelSerializer):
     """Serializer para consultar y administrar servicios."""
 
@@ -179,11 +253,14 @@ class TechnicianSerializer(UserBoundProfileSerializer):
 class TicketSerializer(serializers.ModelSerializer):
     """Serializer para tickets con campos de creación limitados para clientes."""
 
+    client_info = ClientInfoSerializer(source="client", read_only=True)
+
     class Meta:
         model = Ticket
         fields = [
             "id",
             "client",
+            "client_info",
             "service",
             "titulo",
             "descripcion",
@@ -261,6 +338,10 @@ class TicketSerializer(serializers.ModelSerializer):
         if request and request.user.is_authenticated and request.user.role == User.Role.CLIENTE:
             for field_name in self.CLIENT_INTERNAL_FIELDS:
                 fields[field_name].read_only = True
+            if self.instance is None:
+                fields["estado"].read_only = True
+            else:
+                fields["estado"].read_only = False
         return fields
 
     def validate(self, attrs):
@@ -271,7 +352,12 @@ class TicketSerializer(serializers.ModelSerializer):
                 raise serializers.ValidationError({"estado": "Un ticket nuevo debe iniciar en estado NUEVO."})
 
         if request and request.user.is_authenticated and request.user.role == User.Role.CLIENTE:
-            unexpected_fields = set(self.initial_data) - self.CLIENT_CREATE_FIELDS
+            allowed_fields = (
+                self.CLIENT_CREATE_FIELDS
+                if self.instance is None
+                else {"estado"}
+            )
+            unexpected_fields = set(self.initial_data) - allowed_fields
             if unexpected_fields:
                 errors = {
                     field: "Este campo no puede ser enviado por un cliente."
@@ -283,8 +369,21 @@ class TicketSerializer(serializers.ModelSerializer):
             if client is None:
                 raise serializers.ValidationError({"client": "El usuario no tiene un perfil de cliente asociado."})
 
+            if self.instance is not None:
+                if (
+                    attrs.get("estado") != Ticket.Status.CERRADO
+                    or self.instance.estado != Ticket.Status.RESUELTO
+                ):
+                    raise serializers.ValidationError(
+                        {"estado": "El cliente solo puede cerrar un ticket RESUELTO."}
+                    )
+
         if request and request.user.is_authenticated and self.instance is not None:
             role = request.user.role
+            if role == User.Role.CLIENTE and set(attrs) != {"estado"}:
+                raise PermissionDenied(
+                    "El cliente solo puede modificar el estado de su ticket."
+                )
             if role in self.ROLE_UPDATE_FIELDS:
                 unexpected_fields = set(attrs) - self.ROLE_UPDATE_FIELDS[role]
                 if unexpected_fields:

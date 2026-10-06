@@ -17,6 +17,18 @@ export interface Ticket {
   solucion: string;
   specialist: number | null;
   technician: number | null;
+  client_info: {
+    nombres: string;
+    apellidos: string;
+    telefono: string;
+    addresses: Array<{
+      direccion: string;
+      referencia: string;
+      latitud: string;
+      longitud: string;
+      principal: boolean;
+    }>;
+  };
   fecha_creacion: string;
   fecha_actualizacion: string;
 }

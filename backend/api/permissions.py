@@ -185,6 +185,22 @@ class IsAdminOrSelfClient(BasePermission):
         return True
 
 
+class IsAdminOrOwnAddress(BasePermission):
+    """Permite a administradores todo y a clientes solo sus domicilios."""
+
+    def has_permission(self, request, view):
+        return request.user.is_authenticated and request.user.role in {
+            "ADMINISTRADOR",
+            "CLIENTE",
+        }
+
+    def has_object_permission(self, request, view, obj):
+        return (
+            request.user.role == "ADMINISTRADOR"
+            or obj.client.user == request.user
+        )
+
+
 class IsTicketRelatedOrAdmin(BasePermission):
     """Permite lectura relacionada y PATCH acotado a especialista/técnico asignados."""
 
@@ -205,7 +221,18 @@ class IsTicketRelatedOrAdmin(BasePermission):
             return True
 
         if request.user.role == "CLIENTE":
-            return request.method in SAFE_METHODS and obj.client.user == request.user
+            return (
+                obj.client.user == request.user
+                and (
+                    request.method in SAFE_METHODS
+                    or (
+                        request.method == "PATCH"
+                        and set(request.data) == {"estado"}
+                        and obj.estado == "RESUELTO"
+                        and request.data.get("estado") == "CERRADO"
+                    )
+                )
+            )
 
         if request.user.role == "ESPECIALISTA":
             return (
