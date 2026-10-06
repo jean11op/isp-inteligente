@@ -1,4 +1,4 @@
-import { House, Plus, Ticket, type LucideIcon } from "lucide-react";
+import { Boxes, House, Plus, Ticket, Users, type LucideIcon } from "lucide-react";
 import { PATHS } from "@/routes/paths";
 import type { Role } from "@/types/roles";
 
@@ -25,5 +25,10 @@ export const NAV_BY_ROLE: Record<Role, NavItem[]> = {
   ],
   ESPECIALISTA: [{ to: PATHS.specialist, label: "Inicio", icon: House, end: true }],
   TECNICO: [{ to: PATHS.technician, label: "Inicio", icon: House, end: true }],
-  ADMINISTRADOR: [{ to: PATHS.admin, label: "Inicio", icon: House, end: true }],
+  ADMINISTRADOR: [
+    { to: PATHS.admin, label: "Resumen", icon: House, end: true },
+    { to: PATHS.adminTickets, label: "Tickets", icon: Ticket },
+    { to: PATHS.adminPeople, label: "Personas", icon: Users },
+    { to: PATHS.adminInventory, label: "Inventario", icon: Boxes },
+  ],
 };

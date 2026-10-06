@@ -1,11 +1,9 @@
 import { isAxiosError } from "axios";
-import { apiClient } from "../../../services/apiClient";
-import type { CreateTicketData, Ticket } from "../../../types/ticket";
+import { apiClient } from "@/services/apiClient";
+import { createResource, listResource, patchResource } from "@/services/resource";
+import type { CreateTicketData, Ticket, TicketPatch } from "@/types/ticket";
 
-export async function getTickets(): Promise<Ticket[]> {
-  const { data } = await apiClient.get<Ticket[]>("/tickets/");
-  return data;
-}
+export const getTickets = () => listResource<Ticket>("/tickets/");
 
 export async function getTicket(id: number): Promise<Ticket> {
   try {
@@ -19,7 +17,5 @@ export async function getTicket(id: number): Promise<Ticket> {
   }
 }
 
-export async function createTicket(payload: CreateTicketData): Promise<Ticket> {
-  const { data } = await apiClient.post<Ticket>("/tickets/", payload);
-  return data;
-}
+export const createTicket = (payload: CreateTicketData) => createResource<Ticket>("/tickets/", payload);
+export const updateTicket = (id: number, patch: TicketPatch) => patchResource<Ticket>(`/tickets/${id}/`, patch);

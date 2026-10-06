@@ -1,8 +1,8 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import type { TicketPriority } from "../../../types/ticket";
+import { queryKeys } from "@/services/queryKeys";
+import type { TicketPatch, TicketPriority } from "@/types/ticket";
 import { useAuth } from "../../auth/useAuth";
-import { resolveClientId } from "../../client/services/clientService";
-import { createTicket, getTicket, getTickets } from "../services/ticketService";
+import { createTicket, getTicket, getTickets, updateTicket } from "../services/ticketService";
 
 export interface NewTicketInput {
   titulo: string;
@@ -10,53 +10,42 @@ export interface NewTicketInput {
   prioridad: TicketPriority;
 }
 
-export function useMyTickets() {
+/** El backend ya filtra los tickets según el rol de quien consulta. */
+export function useTickets() {
   const { user } = useAuth();
-
   return useQuery({
-    queryKey: ["tickets", "mine", user?.id],
+    queryKey: [...queryKeys.tickets, "list", user?.id],
     enabled: user !== null,
-    queryFn: async () => {
-      if (!user) throw new Error("Sesión no válida");
-      const clientId = await resolveClientId(user);
-      const tickets = await getTickets();
-      return tickets
-        .filter((ticket) => ticket.client === clientId)
-        .sort((a, b) => b.fecha_creacion.localeCompare(a.fecha_creacion));
-    },
+    queryFn: async () => (await getTickets()).sort((a, b) => b.fecha_creacion.localeCompare(a.fecha_creacion)),
   });
 }
 
+export const useMyTickets = useTickets;
+
 export function useTicket(id: number) {
   const { user } = useAuth();
-
   return useQuery({
-    queryKey: ["tickets", "detail", id, user?.id],
+    queryKey: [...queryKeys.ticket(id), user?.id],
     enabled: user !== null && Number.isFinite(id),
-    queryFn: async () => {
-      if (!user) throw new Error("Sesión no válida");
-      const [ticket, clientId] = await Promise.all([
-        getTicket(id),
-        resolveClientId(user),
-      ]);
-      if (ticket.client !== clientId) {
-        throw new Error("Ticket inexistente o no autorizado");
-      }
-      return ticket;
-    },
+    queryFn: () => getTicket(id),
   });
 }
 
 export function useCreateTicket() {
-  const { user } = useAuth();
   const queryClient = useQueryClient();
-
   return useMutation({
-    mutationFn: async (input: NewTicketInput) => {
-      if (!user) throw new Error("Sesión no válida");
-      const client = await resolveClientId(user);
-      return createTicket({ ...input, client });
+    mutationFn: (input: NewTicketInput) => createTicket(input),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: queryKeys.tickets }),
+  });
+}
+
+export function useUpdateTicket(id: number) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (patch: TicketPatch) => updateTicket(id, patch),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: queryKeys.tickets });
+      void queryClient.invalidateQueries({ queryKey: queryKeys.history });
     },
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["tickets"] }),
   });
 }

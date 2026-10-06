@@ -1,4 +1,5 @@
-import { useState, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
+import { AUTH_LOGOUT_EVENT, tokenStorage } from "../../services/tokenStorage";
 import type { User } from "../../types/user";
 import { AuthContext } from "./AuthContext";
 import { login as loginRequest } from "./services/authService";
@@ -18,6 +19,17 @@ function readStoredUser(): User | null {
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(readStoredUser);
 
+  function clearSession() {
+    localStorage.removeItem(STORAGE_KEY);
+    tokenStorage.clear();
+    setUser(null);
+  }
+
+  useEffect(() => {
+    window.addEventListener(AUTH_LOGOUT_EVENT, clearSession);
+    return () => window.removeEventListener(AUTH_LOGOUT_EVENT, clearSession);
+  }, []);
+
   async function login(credentials: LoginCredentials) {
     const loggedUser = await loginRequest(credentials);
     localStorage.setItem(STORAGE_KEY, JSON.stringify(loggedUser));
@@ -25,10 +37,5 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return loggedUser;
   }
 
-  function logout() {
-    localStorage.removeItem(STORAGE_KEY);
-    setUser(null);
-  }
-
-  return <AuthContext value={{ user, login, logout }}>{children}</AuthContext>;
+  return <AuthContext value={{ user, login, logout: clearSession }}>{children}</AuthContext>;
 }

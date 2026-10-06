@@ -10,15 +10,15 @@ export const PATHS = {
   specialist: "/especialista",
   technician: "/tecnico",
   admin: "/admin",
+  adminTickets: "/admin/tickets",
+  adminPeople: "/admin/personas",
+  adminInventory: "/admin/inventario",
 } as const;
 
-export function clientTicketPath(id: number): string {
-  return `${PATHS.clientTickets}/${id}`;
-}
-
-export function specialistTicketPath(id: number): string {
-  return `${PATHS.specialist}/${id}`;
-}
+export const clientTicketPath = (id: number) => `${PATHS.clientTickets}/${id}`;
+export const specialistTicketPath = (id: number) => `${PATHS.specialist}/tickets/${id}`;
+export const technicianTicketPath = (id: number) => `${PATHS.technician}/servicios/${id}`;
+export const adminTicketPath = (id: number) => `${PATHS.adminTickets}/${id}`;
 
 export const ROLE_HOME: Record<Role, string> = {
   CLIENTE: PATHS.client,

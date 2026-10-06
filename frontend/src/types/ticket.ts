@@ -1,18 +1,7 @@
 export type TicketStatus =
-  | "NUEVO"
-  | "EN_REVISION"
-  | "ESPERANDO_ESPECIALISTA"
-  | "DIAGNOSTICADO"
-  | "REQUIERE_VISITA"
-  | "TECNICO_ASIGNADO"
-  | "EN_CAMINO"
-  | "EN_DOMICILIO"
-  | "EN_ATENCION"
-  | "RESUELTO"
-  | "CERRADO"
-  | "NO_RESUELTO"
-  | "ESCALADO"
-  | "SEGUNDA_VISITA";
+  | "NUEVO" | "EN_REVISION" | "ESPERANDO_ESPECIALISTA" | "DIAGNOSTICADO" | "REQUIERE_VISITA"
+  | "TECNICO_ASIGNADO" | "EN_CAMINO" | "EN_DOMICILIO" | "EN_ATENCION" | "RESUELTO" | "CERRADO"
+  | "NO_RESUELTO" | "ESCALADO" | "SEGUNDA_VISITA";
 
 export type TicketPriority = "BAJA" | "MEDIA" | "ALTA" | "CRITICA";
 
@@ -32,9 +21,11 @@ export interface Ticket {
   fecha_actualizacion: string;
 }
 
+/** El backend rechaza cualquier otro campo cuando quien crea es un cliente. */
 export interface CreateTicketData {
-  client: number;
   titulo: string;
   descripcion: string;
   prioridad: TicketPriority;
 }
+
+export type TicketPatch = Partial<Pick<Ticket, "estado" | "diagnostico" | "solucion" | "specialist" | "technician">>;
