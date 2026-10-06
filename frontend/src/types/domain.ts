@@ -80,3 +80,22 @@ export interface AppUser {
   email: string;
   role: Role;
 }
+
+export interface Address {
+  id: number;
+  client: number;
+  direccion: string;
+  referencia: string;
+  latitud: string;
+  longitud: string;
+  principal: boolean;
+  fecha_registro: string;
+}
+
+export interface AddressInput {
+  direccion: string;
+  referencia: string;
+  latitud: string;
+  longitud: string;
+  principal: boolean;
+}

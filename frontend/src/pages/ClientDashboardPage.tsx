@@ -18,7 +18,7 @@ export default function ClientDashboardPage() {
     <div className="home">
       <header className="home-greeting">
         <p className="eyebrow">Panel del cliente</p>
-        <h1>Hola, {user?.username}</h1>
+        <h1>Hola, {user?.fullName?.split(" ")[0] ?? user?.username}</h1>
       </header>
 
       {isPending && <Skeleton lines={3} />}

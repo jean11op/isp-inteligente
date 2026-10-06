@@ -1,4 +1,12 @@
-import { Boxes, House, Plus, Ticket, Users, type LucideIcon } from "lucide-react";
+import {
+  Boxes,
+  House,
+  MapPin,
+  Plus,
+  Ticket,
+  Users,
+  type LucideIcon,
+} from "lucide-react";
 import { PATHS } from "@/routes/paths";
 import type { Role } from "@/types/roles";
 
@@ -14,14 +22,26 @@ export interface NavItem {
 export const NAV_BY_ROLE: Record<Role, NavItem[]> = {
   CLIENTE: [
     { to: PATHS.client, label: "Inicio", icon: House, end: true },
-    { to: PATHS.clientNewTicket, label: "Reportar", icon: Plus, primary: true, end: true },
+    {
+      to: PATHS.clientNewTicket,
+      label: "Reportar",
+      icon: Plus,
+      primary: true,
+      end: true,
+    },
     {
       to: PATHS.clientTickets,
       label: "Mis tickets",
       icon: Ticket,
       isActive: (pathname) =>
-        pathname.startsWith(PATHS.clientTickets) && pathname !== PATHS.clientNewTicket,
+        pathname.startsWith(PATHS.clientTickets) &&
+        pathname !== PATHS.clientNewTicket,
     },
+    {
+  to: PATHS.clientAddress,
+  label: "Domicilio",
+  icon: MapPin,
+},
   ],
   ESPECIALISTA: [{ to: PATHS.specialist, label: "Inicio", icon: House, end: true }],
   TECNICO: [{ to: PATHS.technician, label: "Inicio", icon: House, end: true }],

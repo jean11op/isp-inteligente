@@ -7,6 +7,7 @@ export const PATHS = {
   client: "/cliente",
   clientTickets: "/cliente/tickets",
   clientNewTicket: "/cliente/tickets/nuevo",
+  clientAddress: "/cliente/domicilio",
   specialist: "/especialista",
   technician: "/tecnico",
   admin: "/admin",
@@ -14,7 +15,6 @@ export const PATHS = {
   adminPeople: "/admin/personas",
   adminInventory: "/admin/inventario",
 } as const;
-
 export const clientTicketPath = (id: number) => `${PATHS.clientTickets}/${id}`;
 export const specialistTicketPath = (id: number) => `${PATHS.specialist}/tickets/${id}`;
 export const technicianTicketPath = (id: number) => `${PATHS.technician}/servicios/${id}`;

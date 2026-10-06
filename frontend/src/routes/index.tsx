@@ -8,6 +8,7 @@ import AdminPeoplePage from "../pages/AdminPeoplePage";
 import AdminTicketPage from "../pages/AdminTicketPage";
 import AdminTicketsPage from "../pages/AdminTicketsPage";
 import ClientDashboardPage from "../pages/ClientDashboardPage";
+import ClientAddressPage from "../pages/ClientAddressPage";
 import ClientTicketsPage from "../pages/ClientTicketsPage";
 import HomePage from "../pages/HomePage";
 import LoginPage from "../pages/LoginPage";
@@ -55,6 +56,7 @@ export const router = createBrowserRouter([
     { path: "tickets", element: <ClientTicketsPage /> },
     { path: "tickets/nuevo", element: <NewTicketPage /> },
     { path: "tickets/:ticketId", element: <TicketDetailPage /> },
+    { path: "domicilio", element: <ClientAddressPage /> },
   ]),
   dashboardRoute(PATHS.specialist, "ESPECIALISTA", <SpecialistDashboardPage />, [
     { path: "tickets/:ticketId", element: <SpecialistTicketPage /> },

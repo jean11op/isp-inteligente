@@ -6,4 +6,5 @@ export const queryKeys = {
   inventory: ["inventory"] as const,
   evaluations: ["evaluations"] as const,
   people: (kind: string) => ["people", kind] as const,
+  addresses: ["addresses"] as const,
 };

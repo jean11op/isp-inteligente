@@ -35,7 +35,7 @@ export default function DashboardLayout() {
         </Link>
         <div className="shell-user">
           <div className="shell-user-info">
-            <span className="shell-user-name">{user.username}</span>
+            <span className="shell-user-name">{user.fullName ?? user.username}</span>
             <span className="shell-user-role">{ROLE_LABEL[user.role]}</span>
           </div>
           <button className="icon-btn" type="button" onClick={handleLogout} aria-label="Cerrar sesión">
