@@ -1,0 +1,106 @@
+{
+  "name": "customer-survey",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "customer-survey",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        -560,
+        -32
+      ],
+      "id": "bd663bed-cd65-4d41-819d-dfb3bf6df158",
+      "name": "Webhook",
+      "webhookId": "b56dba7f-be7c-4ecf-b3e1-4d3f2e4c1dae"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "073a2df2-1b06-4b1f-bb1b-498729a44040",
+              "name": "evento",
+              "value": "customer-survey",
+              "type": "string"
+            },
+            {
+              "id": "db79347d-6086-4816-951f-efd9329d5320",
+              "name": "mensaje",
+              "value": "=Evalúe su atención (ticket #{{ $json.body.ticket_id }}): {{ $json.body.enlace_encuesta }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.5,
+      "position": [
+        -272,
+        -32
+      ],
+      "id": "2982d945-9e28-4e05-8874-a68638b14f13",
+      "name": "Edit Fields"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        0,
+        -32
+      ],
+      "id": "d36c801b-a5bc-4426-979c-06fde80f11c9",
+      "name": "Respond to Webhook"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "timeSavedMode": "fixed",
+    "errorWorkflow": "YvOgrBljkkgmR7cC",
+    "callerPolicy": "workflowsFromSameOwner",
+    "availableInMCP": false
+  },
+  "versionId": "e1f3e5c4-0aa2-4b04-a52a-9995c700856f",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "539bfee859c6f54f637a0610499282b123ebe260a8c25ddf80a4600c1fc26c27"
+  },
+  "nodeGroups": [],
+  "id": "wtnj43mOQFZHjj5f",
+  "tags": []
+}
